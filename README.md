@@ -1,5 +1,13 @@
 # 7wd-bot
 
+## Requirements
+
+1. Clone https://github.com/dfomin/7wd-engine
+2. Add 7wd-engine to PYTHONPATH or add the path to jupyter notebook
+3. Python 3.9+ is supported
+
+## Data
+
 Data can be downloaded here:
 
 https://drive.google.com/file/d/1qi3QEYamKcGypw0HPhwI5L0mwHWHR6EP/view?usp=sharing
