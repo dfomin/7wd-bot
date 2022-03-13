@@ -5,7 +5,7 @@ from typing import List, Callable
 import numpy as np
 import pandas as pd
 from swd.action import BuyCardAction, DiscardCardAction
-from swd.agents import Agent
+from swd.agents import Agent, RecordedAgent
 from swd.cards_board import AGES
 from swd.entity_manager import EntityManager
 from swd.game import Game
@@ -47,8 +47,8 @@ def process_sevenee_games(process_function: Callable[[GameState, List[Agent]], N
 
 
 def collect_states_actions():
-    saved_states = []
-    saved_actions = []
+    saved_states = [[], [], []]
+    saved_actions = [[], [], []]
 
     def save_state(state: GameState, agents: List[Agent]):
         while not Game.is_finished(state):
@@ -58,18 +58,50 @@ def collect_states_actions():
             agent = agents[state.current_player_index]
             selected_action = agent.choose_action(state, actions)
             if isinstance(selected_action, BuyCardAction) or isinstance(selected_action, DiscardCardAction):
-                saved_states.append(state.clone())
-                saved_actions.append(selected_action)
+                index = 0
+                if state.meta_info["season"] % 5 == 0:
+                    index = 2
+                elif state.meta_info["season"] % 5 == 4:
+                    index = 1
+                saved_states[index].append(state.clone())
+                saved_actions[index].append(selected_action)
 
             Game.apply_action(state, selected_action)
 
     process_sevenee_games(save_state)
 
-    with open("../notebooks/states.pkl", "wb") as f:
-        pickle.dump(saved_states, f)
+    suffixes = ["_train", "_valid", "_test"]
+    for i in range(3):
+        with open(f"../datasets/states{suffixes[i]}.pkl", "wb") as f:
+            pickle.dump(saved_states[i], f)
 
-    with open("../notebooks/actions.pkl", "wb") as f:
-        pickle.dump(saved_actions, f)
+        with open(f"../datasets/actions{suffixes[i]}.pkl", "wb") as f:
+            pickle.dump(saved_actions[i], f)
+
+
+def collect_games_features():
+    games_features = []
+
+    def save_features(state: GameState, agents: List[Agent]):
+        recorded_agents: List[RecordedAgent] = []
+        for agent in agents:
+            if isinstance(agent, RecordedAgent):
+                recorded_agents.append(agent)
+        features = GameFeatures(state, recorded_agents)
+        games_features.append({
+            "double_turns_0": features.double_turns[0],
+            "double_turns_1": features.double_turns[1],
+            "first_picked_wonder": features.first_picked_wonders,
+            "winner": features.winner,
+            "victory": features.victory,
+            "division": features.division,
+            "path": features.path,
+            "players": features.players
+        })
+
+    process_sevenee_games(save_features)
+    df = pd.DataFrame(games_features)
+    df.to_csv("../notebooks/features.csv", index=False)
 
 
 def main():
@@ -79,6 +111,7 @@ def main():
     # print(StateFeatures.extract_state_features_dict(state))
     # print(EntityManager.card(0).bonuses)
     collect_states_actions()
+    # collect_games_features()
 
 
 if __name__ == "__main__":

@@ -100,6 +100,7 @@ class SeveneeLoader:
                                game_log["data"])
         game_state.meta_info["player_names"] = player_names
         game_state.meta_info["division"] = int(str(path).split("/")[-3])
+        game_state.meta_info["season"] = int(str(path).split("/")[-4])
         game_state.meta_info["path"] = str(path)
         return game_state, agents
 

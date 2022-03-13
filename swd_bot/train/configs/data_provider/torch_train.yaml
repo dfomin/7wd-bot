@@ -1,0 +1,5 @@
+_target_: swd_bot.data_providers.torch_data_provider.TorchDataLoader
+states_path: "../../datasets/states_train.pkl"
+actions_path: "../../datasets/actions_train.pkl"
+batch_size: 256
+shuffle: true
