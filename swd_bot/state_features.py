@@ -2,7 +2,7 @@ from typing import List, Any, Dict
 
 import numpy as np
 from swd.bonuses import BONUSES, ImmediateBonus, SCIENTIFIC_SYMBOLS_RANGE
-from swd.cards_board import AGES
+from swd.cards_board import AGES, CardsBoard
 
 from swd.entity_manager import EntityManager
 from swd.game import Game, GameState
@@ -62,7 +62,9 @@ class StateFeatures:
             features["players"].append(player)
 
         indices = np.flip(AGES[state.age] > 0, axis=0)
+        available_cards = CardsBoard.available_cards(state.cards_board_state)
         features["cards_board"] = list(np.flip(state.cards_board_state.card_places, axis=0)[indices])
+        features["available_cards"] = list(map(lambda x: x[0], available_cards))
 
         return features
 

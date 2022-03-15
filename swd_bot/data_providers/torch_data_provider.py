@@ -23,8 +23,16 @@ class TorchDataset(Dataset):
         action = self.actions[index]
         flat_features = self.flatten_features(StateFeatures.extract_state_features_dict(state))
         features = torch.tensor(flat_features, dtype=torch.float)
-        action_id = action.card_id + (0 if str(action)[0] == "B" else EntityManager.cards_count())
-        return features, torch.tensor(action_id, dtype=torch.long)
+        if str(action)[:3] == "Buy":
+            action_id = action.card_id
+        elif str(action)[:3] == "Dis":
+            action_id = action.card_id + EntityManager.cards_count()
+        elif str(action)[:3] == "Bui":
+            action_id = action.wonder_id + 2 * EntityManager.cards_count()
+        else:
+            raise ValueError
+        winner = state.meta_info["result"].get("winnerIndex", 0)
+        return features, (torch.tensor(action_id, dtype=torch.long), torch.tensor(winner, dtype=torch.long))
 
     @staticmethod
     def flatten_features(x: Dict[str, Any]):
@@ -40,13 +48,18 @@ class TorchDataset(Dataset):
             output.append(x["players"][i]["coins"])
             output.extend(x["players"][i]["unbuilt_wonders"])
             output.extend(x["players"][i]["bonuses"])
-        for card_id in x["cards_board"]:
+        # for card_id in x["cards_board"]:
+        #     ohe = [0] * EntityManager.cards_count()
+        #     if card_id >= 0:
+        #         ohe[card_id] = 1
+        #         # output.extend(EntityManager.card(card_id).bonuses)
+        #     # else:
+        #         # output.extend([0] * len(EntityManager.card(0).bonuses))
+        #     output.extend(ohe)
+        for i in range(6):
             ohe = [0] * EntityManager.cards_count()
-            if card_id >= 0:
-                ohe[card_id] = 1
-                # output.extend(EntityManager.card(card_id).bonuses)
-            # else:
-            # output.extend([0] * len(EntityManager.card(0).bonuses))
+            if i < len(x["available_cards"]):
+                ohe[x["available_cards"][i]] = 1
             output.extend(ohe)
         return output
 

@@ -2,17 +2,17 @@ import pickle
 from pathlib import Path
 from typing import List, Callable
 
-import numpy as np
 import pandas as pd
-from swd.action import BuyCardAction, DiscardCardAction
+import torch
+from swd.action import BuyCardAction, DiscardCardAction, BuildWonderAction
 from swd.agents import Agent, RecordedAgent
-from swd.cards_board import AGES
-from swd.entity_manager import EntityManager
 from swd.game import Game
 from swd.states.game_state import GameState
 from tqdm import tqdm
 
+from swd_bot.data_providers.torch_data_provider import TorchDataset
 from swd_bot.game_features import GameFeatures
+from swd_bot.model.torch_baseline import TorchBaseline
 from swd_bot.sevenee import SeveneeLoader
 from swd_bot.state_features import StateFeatures
 
@@ -57,7 +57,8 @@ def collect_states_actions():
                 break
             agent = agents[state.current_player_index]
             selected_action = agent.choose_action(state, actions)
-            if isinstance(selected_action, BuyCardAction) or isinstance(selected_action, DiscardCardAction):
+            if isinstance(selected_action, BuyCardAction) or isinstance(selected_action, DiscardCardAction) \
+                    or isinstance(selected_action, BuildWonderAction):
                 index = 0
                 if state.meta_info["season"] % 5 == 0:
                     index = 2
@@ -72,10 +73,10 @@ def collect_states_actions():
 
     suffixes = ["_train", "_valid", "_test"]
     for i in range(3):
-        with open(f"../datasets/states{suffixes[i]}.pkl", "wb") as f:
+        with open(f"../datasets/buy_discard_build/states{suffixes[i]}.pkl", "wb") as f:
             pickle.dump(saved_states[i], f)
 
-        with open(f"../datasets/actions{suffixes[i]}.pkl", "wb") as f:
+        with open(f"../datasets/buy_discard_build/actions{suffixes[i]}.pkl", "wb") as f:
             pickle.dump(saved_actions[i], f)
 
 
@@ -104,14 +105,47 @@ def collect_games_features():
     df.to_csv("../notebooks/features.csv", index=False)
 
 
+def test_model():
+    model = TorchBaseline()
+    model.load_state_dict(torch.load("../models/model_acc51.pth"))
+    model.eval()
+
+    # file = Path(f"../../7wd/sevenee/46/1/1/aRT22RJpJAGP8iPNs.json")
+    file = Path(f"../../7wd/sevenee/46/1/1/SuJYYgWE7fMFS8Dfi.json")
+    state, agents = SeveneeLoader.load(file)
+    print(state.meta_info["player_names"])
+    correct = 0
+    all = 0
+    while not Game.is_finished(state):
+        actions = Game.get_available_actions(state)
+        if Game.is_finished(state):
+            break
+        agent = agents[state.current_player_index]
+        selected_action = agent.choose_action(state, actions)
+
+        if len(state.wonders) == 0:
+            features = TorchDataset.flatten_features(StateFeatures.extract_state_features_dict(state))
+            action, winner = model(torch.tensor(features, dtype=torch.float)[None])
+            if isinstance(selected_action, BuyCardAction) or isinstance(selected_action, DiscardCardAction)\
+                    or isinstance(selected_action, BuildWonderAction):
+                if action[0].argmax().item() == selected_action.card_id:
+                    correct += 1
+                all += 1
+            print(round(winner[0][0].item(), 2), round(winner[0][1].item(), 2))
+
+        Game.apply_action(state, selected_action)
+    print(correct / all)
+
+
 def main():
     # with open("../notebooks/states.pkl", "rb") as f:
     #     states = pickle.load(f)
     # state: GameState = states[0]
     # print(StateFeatures.extract_state_features_dict(state))
     # print(EntityManager.card(0).bonuses)
-    collect_states_actions()
+    # collect_states_actions()
     # collect_games_features()
+    test_model()
 
 
 if __name__ == "__main__":
