@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from swd_bot.data_providers.torch_data_provider import TorchDataset
 from swd_bot.game_features import GameFeatures
-from swd_bot.model.torch_baseline import TorchBaseline
+from swd_bot.model.torch_models import TorchBaseline
 from swd_bot.sevenee import SeveneeLoader
 from swd_bot.state_features import StateFeatures
 

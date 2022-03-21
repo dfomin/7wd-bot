@@ -3,15 +3,30 @@ import torch
 from omegaconf import DictConfig
 from torch import nn, optim
 
+from swd_bot.data_providers.feature_extractor import FeatureExtractor
 
-@hydra.main(config_path="configs", config_name="train")
+
+@hydra.main(config_path="configs", config_name="main")
 def train(config: DictConfig):
-    model = hydra.utils.instantiate(config["model"])
+    config = config["train"]
+    feature_extractor: FeatureExtractor = hydra.utils.instantiate(config["feature_extractor"])
+
     train_loader = hydra.utils.instantiate(config["train_data_loader"])
+    train_loader.dataset.feature_extractor = feature_extractor
     valid_loader = hydra.utils.instantiate(config["valid_data_loader"])
+    valid_loader.dataset.feature_extractor = feature_extractor
+
+    train_sample = next(iter(train_loader))[0]
+    game_features_count = train_sample[0].shape[-1]
+    cards_features_count = train_sample[1].shape[-1]
+    model = hydra.utils.instantiate(config["model"],
+                                    game_features_count=game_features_count,
+                                    cards_features_count=cards_features_count)
+
     epochs = config["epochs"]
     device = torch.device(config["device"])
     output_path = config["output_path"]
+    model_prefix = config["model_prefix"]
 
     action_criterion = nn.CrossEntropyLoss()
     winner_criterion = nn.CrossEntropyLoss()
@@ -23,11 +38,11 @@ def train(config: DictConfig):
         running_loss = 0.0
         count = 0
         for i, data in enumerate(train_loader):
-            inputs, (true_actions, true_winners) = data
+            (features, cards), (true_actions, true_winners) = data
 
             optimizer.zero_grad()
 
-            pred_actions, pred_winners = model(inputs.to(device))
+            pred_actions, pred_winners = model(features.to(device), cards.to(device))
             action_loss = action_criterion(pred_actions, true_actions.to(device))
             winner_loss = winner_criterion(pred_winners, true_winners.to(device))
             loss = action_loss + winner_loss
@@ -42,9 +57,9 @@ def train(config: DictConfig):
             correct_winners = 0
             total_pred = 0
             for i, data in enumerate(valid_loader):
-                inputs, (true_actions, true_winners) = data
+                (features, cards), (true_actions, true_winners) = data
 
-                pred_actions, pred_winners = model(inputs.to(device))
+                pred_actions, pred_winners = model(features.to(device), cards.to(device))
                 _, winner_predictions = torch.max(pred_winners, 1)
                 _, action_predictions = torch.max(pred_actions, 1)
                 for label, prediction in zip(true_actions, action_predictions.to(device)):
@@ -66,9 +81,7 @@ def train(config: DictConfig):
             best_accuracy = action_accuracy
             best_model = model.state_dict()
     if best_model is not None:
-        torch.save(best_model, f"{output_path}/model_acc{best_accuracy}.pth")
-
-    print('Finished Training')
+        torch.save(best_model, f"{output_path}/{model_prefix}_acc{best_accuracy}.pth")
 
 
 if __name__ == "__main__":
