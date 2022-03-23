@@ -3,18 +3,24 @@ from pathlib import Path
 from typing import List, Callable
 
 import pandas as pd
+import pyglet
 import torch
 from swd.action import BuyCardAction, DiscardCardAction, BuildWonderAction
-from swd.agents import Agent, RecordedAgent
+from swd.agents import Agent, RecordedAgent, ConsoleAgent
+from swd.entity_manager import EntityManager
 from swd.game import Game
 from swd.states.game_state import GameState
 from tqdm import tqdm
 
+from swd_bot.agents.torch_agent import TorchAgent
+from swd_bot.data_providers.feature_extractor import FlattenEmbeddingsFeatureExtractor
 from swd_bot.data_providers.torch_data_provider import TorchDataset
 from swd_bot.game_features import GameFeatures
-from swd_bot.model.torch_models import TorchBaseline
+from swd_bot.game_view import GameWindow
+from swd_bot.model.torch_models import TorchBaseline, TorchBaselineEmbeddings
 from swd_bot.sevenee import SeveneeLoader
 from swd_bot.state_features import StateFeatures
+from swd_bot.swdio import SwdioLoader
 
 
 def generate_words():
@@ -106,12 +112,12 @@ def collect_games_features():
 
 
 def test_model():
-    model = TorchBaseline()
-    model.load_state_dict(torch.load("../models/model_acc51.pth"))
+    model = TorchBaseline(1104, 0)
+    model.load_state_dict(torch.load("../models/model_flat_emb_acc48.5.pth"))
     model.eval()
 
-    # file = Path(f"../../7wd/sevenee/46/1/1/aRT22RJpJAGP8iPNs.json")
-    file = Path(f"../../7wd/sevenee/46/1/1/SuJYYgWE7fMFS8Dfi.json")
+    file = Path(f"../../7wd/sevenee/46/1/1/aRT22RJpJAGP8iPNs.json")
+    # file = Path(f"../../7wd/sevenee/46/1/1/SuJYYgWE7fMFS8Dfi.json")
     state, agents = SeveneeLoader.load(file)
     print(state.meta_info["player_names"])
     correct = 0
@@ -124,8 +130,11 @@ def test_model():
         selected_action = agent.choose_action(state, actions)
 
         if len(state.wonders) == 0:
-            features = TorchDataset.flatten_features(StateFeatures.extract_state_features_dict(state))
-            action, winner = model(torch.tensor(features, dtype=torch.float)[None])
+            extractor = FlattenEmbeddingsFeatureExtractor()
+            features, cards = extractor.features(state)
+            features = torch.tensor(features, dtype=torch.float)
+            cards = torch.tensor(cards, dtype=torch.float)
+            action, winner = model(features[None], cards[None])
             if isinstance(selected_action, BuyCardAction) or isinstance(selected_action, DiscardCardAction)\
                     or isinstance(selected_action, BuildWonderAction):
                 if action[0].argmax().item() == selected_action.card_id:
@@ -137,6 +146,51 @@ def test_model():
     print(correct / all)
 
 
+def play_against_ai():
+    state = Game.create()
+    agents = [ConsoleAgent(), TorchAgent()]
+    while not Game.is_finished(state):
+        actions = Game.get_available_actions(state)
+        print(Game.print(state))
+        agent = agents[state.current_player_index]
+        selected_action = agent.choose_action(state, actions)
+        Game.apply_action(state, selected_action)
+
+
+def test_game(state: GameState, agents: List[Agent], verbose: bool = False):
+    if verbose:
+        print(state.meta_info["player_names"])
+
+    while not Game.is_finished(state):
+        print(state)
+        actions = Game.get_available_actions(state)
+        if Game.is_finished(state):
+            break
+        agent = agents[state.current_player_index]
+        selected_action = agent.choose_action(state, actions)
+        Game.apply_action(state, selected_action)
+
+    for i, agent in enumerate(agents):
+        if isinstance(agent, RecordedAgent):
+            assert len(agent.actions) == 0
+        else:
+            assert False
+        if "players" in state.meta_info:
+            if verbose:
+                print(state.players_state[i].coins, state.meta_info["players"][i]["coins"])
+            assert state.players_state[i].coins == state.meta_info["players"][i]["coins"]
+
+    if "result" in state.meta_info:
+        if state.meta_info["result"]["victory"] != "tie" and state.winner != state.meta_info["result"]["winnerIndex"]:
+            print(f"Winner: {state.winner}")
+            print(Game.points(state, 0), Game.points(state, 1))
+            print(state.meta_info["result"])
+        if state.meta_info["result"]["victory"] == "tie":
+            assert state.winner == -1
+        else:
+            assert state.winner == state.meta_info["result"]["winnerIndex"]
+
+
 def main():
     # with open("../notebooks/states.pkl", "rb") as f:
     #     states = pickle.load(f)
@@ -145,7 +199,13 @@ def main():
     # print(EntityManager.card(0).bonuses)
     # collect_states_actions()
     # collect_games_features()
-    test_model()
+    # test_model()
+    # play_against_ai()
+    # state = Game.create()
+    # window = GameWindow(state)
+    # pyglet.app.run()
+    state, agents = SwdioLoader.load(Path("../../7wd/7wdio/log.json"))
+    test_game(state, agents, False)
 
 
 if __name__ == "__main__":

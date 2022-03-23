@@ -77,7 +77,6 @@ class SeveneeLoader:
                 assert False
 
         agents = []
-
         player_names = []
         for i in range(2):
             name = game_log["players"][i]["name"]

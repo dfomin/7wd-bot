@@ -15,8 +15,8 @@ class TorchBaseline(nn.Module):
     def forward(self, features, cards):
         x = features
         x = F.relu(self.linear1(x))
-        policy = F.softmax(self.linear2(x), dim=1)
-        value = F.softmax(self.linear3(x), dim=1)
+        policy = self.linear2(x)
+        value = self.linear3(x)
         return policy, value
 
 
@@ -33,6 +33,6 @@ class TorchBaselineEmbeddings(nn.Module):
         features = F.relu(self.linear1(features))
         cards = F.relu(self.linear2(cards)).flatten(1)
         x = torch.cat((features, cards), dim=1)
-        policy = F.softmax(self.linear3(x), dim=1)
-        value = F.softmax(self.linear4(x), dim=1)
+        policy = self.linear3(x)
+        value = self.linear4(x)
         return policy, value

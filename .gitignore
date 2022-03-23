@@ -5,3 +5,7 @@ __pycache__/
 chromedriver
 datasets/
 *.pkl
+*.pth
+*.pt
+multirun.yaml
+*.webp
