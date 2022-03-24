@@ -9,7 +9,7 @@ from swd_bot.swdio import SwdioLoader, ACTIONS_MAP
 app = FastAPI()
 
 
-@app.post("/")
+@app.post("/7wd-bot/")
 def process_game_log(log: List[Dict[str, Any]]):
     state, agents = SwdioLoader.process(log)
     while not Game.is_finished(state):
