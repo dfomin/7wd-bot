@@ -92,7 +92,7 @@ CARDS_MAP = {
 }
 
 
-ACTIONS_MAP = {
+ACTIONS_MAP: Dict[int, type] = {
     2: PickWonderAction,
     3: PickProgressTokenAction,
     4: BuyCardAction,
@@ -135,31 +135,23 @@ class SwdioLoader:
             action_id = move["id"]
             if action_id in ACTIONS_MAP:
                 player_index = name_to_index[action_item["meta"]["actor"]]
-                if ACTIONS_MAP[action_id] == PickWonderAction:
-                    actions[player_index].append(PickWonderAction(move["wonder"] - 1))
-                elif ACTIONS_MAP[action_id] == PickProgressTokenAction:
-                    token = EntityManager.progress_token_names()[move["token"] - 1]
-                    actions[player_index].append(PickProgressTokenAction(token))
-                elif ACTIONS_MAP[action_id] == BuyCardAction:
+                params = {}
+                if "wonder" in move:
+                    params["wonder_id"] = move["wonder"] - 1
+                if "card" in move:
                     card_id = CARDS_MAP[move["card"]]
-                    pos = SeveneeLoader.card_pos(card_id, cards_preset)
-                    actions[player_index].append(BuyCardAction(card_id, pos))
-                elif ACTIONS_MAP[action_id] == BuildWonderAction:
-                    card_id = CARDS_MAP[move["card"]]
-                    pos = SeveneeLoader.card_pos(card_id, cards_preset)
-                    actions[player_index].append(BuildWonderAction(move["wonder"] - 1, card_id, pos))
-                elif ACTIONS_MAP[action_id] == DiscardCardAction:
-                    card_id = CARDS_MAP[move["card"]]
-                    pos = SeveneeLoader.card_pos(card_id, cards_preset)
-                    actions[player_index].append(DiscardCardAction(card_id, pos))
-                elif ACTIONS_MAP[action_id] == PickStartPlayerAction:
-                    actions[player_index].append(PickStartPlayerAction(player_index))
-                elif ACTIONS_MAP[action_id] == DestroyCardAction:
-                    card_id = CARDS_MAP[move["card"]]
-                    actions[player_index].append(DestroyCardAction(card_id))
-                elif ACTIONS_MAP[action_id] == PickProgressTokenAction:
-                    card_id = CARDS_MAP[move["card"]]
-                    actions[player_index].append(PickDiscardedCardAction(card_id))
+                    params["card_id"] = card_id
+                    params["pos"] = SeveneeLoader.card_pos(card_id, cards_preset)
+                if "token" in move:
+                    params["progress_token"] = EntityManager.progress_token_names()[move["token"] - 1]
+                if "player" in move:
+                    params["player_index"] = name_to_index[move["player"]]
+
+                try:
+                    actions[player_index].append(ACTIONS_MAP[action_id](**params))
+                except TypeError:
+                    params.pop("pos", None)
+                    actions[player_index].append(ACTIONS_MAP[action_id](**params))
 
         agents = []
         player_names = []
@@ -185,3 +177,20 @@ class SwdioLoader:
         state.meta_info["player_names"] = player_names
 
         return state, agents
+
+    @staticmethod
+    def encode_action(action: Action) -> Dict[str, Any]:
+        reversed_actions_map = {v: k for k, v in ACTIONS_MAP.items()}
+        reversed_cards_map = {v: k for k, v in CARDS_MAP.items()}
+        result = {"id": reversed_actions_map[type(action)]}
+
+        if hasattr(action, "card_id"):
+            result["card"] = reversed_cards_map[action.card_id]
+        if hasattr(action, "wonder_id"):
+            result["wonder"] = action.wonder_id + 1
+        if hasattr(action, "progress_token"):
+            result["token"] = EntityManager.progress_token_names().index(action.progress_token) + 1
+        if hasattr(action, "player_index"):
+            result["player"] = action.player_index
+
+        return result
