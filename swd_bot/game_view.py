@@ -4,7 +4,7 @@ from typing import List
 import pyglet
 from pyglet.sprite import Sprite
 from pyglet.window import Window, key
-from swd.agents import ConsoleAgent
+from swd.agents import ConsoleAgent, Agent
 from swd.bonuses import CARD_COLOR, BONUSES
 from swd.cards_board import NO_CARD
 from swd.entity_manager import EntityManager
@@ -41,10 +41,11 @@ class Mode(Enum):
 
 
 class GameWindow(Window):
-    def __init__(self, state: GameState):
+    def __init__(self, state: GameState, agents: List[Agent]):
         super(GameWindow, self).__init__(1280, 720)
 
         self.state = state
+        self.agents = agents
         self.mode = Mode.GAME_BOARD
 
         self.buildings = pyglet.image.ImageGrid(pyglet.resource.image("resources/buildings_v3.webp"), 8, 12)
@@ -181,17 +182,14 @@ class GameWindow(Window):
         elif symbol == key.ESCAPE:
             self.close()
         elif symbol == key.SPACE:
-            self.run_mcts()
+            self.move()
 
-    def run_mcts(self):
-        if Game.is_finished(self.state):
-            return
-
-        agents = [ConsoleAgent(), TorchAgent()]
+    def move(self):
         actions = Game.get_available_actions(self.state)
-        selected_action = agents[self.state.current_player_index].choose_action(self.state, actions)
+        selected_action = self.agents[self.state.current_player_index].choose_action(self.state, actions)
         Game.apply_action(self.state, selected_action)
+        for agent in self.agents:
+            agent.on_action_applied(selected_action, self.state)
         if Game.is_finished(self.state):
             print(f"Winner: {self.state.winner}")
-            return
         self.state_updated()

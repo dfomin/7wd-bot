@@ -1,17 +1,18 @@
 import pickle
 from pathlib import Path
-from typing import List, Callable
+from typing import List, Callable, Optional
 
 import pandas as pd
 import pyglet
 import torch
 from swd.action import BuyCardAction, DiscardCardAction, BuildWonderAction
-from swd.agents import Agent, RecordedAgent, ConsoleAgent
+from swd.agents import Agent, RecordedAgent, ConsoleAgent, RandomAgent
 from swd.entity_manager import EntityManager
 from swd.game import Game
 from swd.states.game_state import GameState
 from tqdm import tqdm
 
+from swd_bot.agents.mcts_agent import MCTSAgent
 from swd_bot.agents.torch_agent import TorchAgent
 from swd_bot.data_providers.feature_extractor import FlattenEmbeddingsFeatureExtractor
 from swd_bot.data_providers.torch_data_provider import TorchDataset
@@ -146,15 +147,16 @@ def test_model():
     print(correct / all)
 
 
-def play_against_ai():
-    state = Game.create()
-    agents = [ConsoleAgent(), TorchAgent()]
+def play_against_ai(state: GameState):
+    agents = [ConsoleAgent(), MCTSAgent(state)]
     while not Game.is_finished(state):
         actions = Game.get_available_actions(state)
         print(Game.print(state))
         agent = agents[state.current_player_index]
         selected_action = agent.choose_action(state, actions)
         Game.apply_action(state, selected_action)
+        for agent in agents:
+            agent.on_action_applied(selected_action, state)
 
 
 def test_game(state: GameState, agents: List[Agent], verbose: bool = False):
@@ -191,6 +193,15 @@ def test_game(state: GameState, agents: List[Agent], verbose: bool = False):
             assert state.winner == state.meta_info["result"]["winnerIndex"]
 
 
+def extract_state(state: GameState, agents: List[Agent], stop_condition: Callable[[GameState], bool]) -> Optional[GameState]:
+    while not Game.is_finished(state):
+        if stop_condition(state):
+            return state
+        actions = Game.get_available_actions(state)
+        selected_action = agents[state.current_player_index].choose_action(state, actions)
+        Game.apply_action(state, selected_action)
+
+
 def main():
     # with open("../notebooks/states.pkl", "rb") as f:
     #     states = pickle.load(f)
@@ -201,11 +212,19 @@ def main():
     # collect_games_features()
     # test_model()
     # play_against_ai()
-    # state = Game.create()
-    # window = GameWindow(state)
-    # pyglet.app.run()
-    state, agents = SwdioLoader.load(Path("../../7wd/7wdio/log.json"))
-    test_game(state, agents, False)
+    state = Game.create()
+    window = GameWindow(state, [ConsoleAgent(), MCTSAgent(state)])
+    pyglet.app.run()
+    # state, agents = SwdioLoader.load(Path("../../7wd/7wdio/log.json"))
+    # test_game(state, agents, False)
+
+    # state, agents = SeveneeLoader.load(Path("../../7wd/sevenee/44/1/1/EJGt5TaWTXd7napf4.json"))
+    # print(state.meta_info["player_names"])
+    #
+    # def f(s: GameState):
+    #     return "PickStartPlayerAction(player_index=0)" in map(str, Game.get_available_actions(s))
+    # state = extract_state(state, agents, f)
+    # play_against_ai(Game.create())
 
 
 if __name__ == "__main__":
