@@ -9,6 +9,7 @@ from swd.bonuses import CARD_COLOR, BONUSES
 from swd.cards_board import NO_CARD
 from swd.entity_manager import EntityManager
 from swd.game import Game
+from swd.player import Player
 from swd.states.game_state import GameState
 from swd.states.player_state import PlayerState
 
@@ -116,9 +117,12 @@ class GameWindow(Window):
         self.conflict_pawn.x = self.width // 2 - self.conflict_pawn.height // 2 + pawn_shift
 
         for i, player_state in enumerate(self.state.players_state):
+            opponent_state = self.state.players_state[1 - i]
             print(f"Player {i}: {player_state.coins} {Game.points(self.state, i)[0]} "
                   f"{player_state.bonuses[0:3]}({player_state.bonuses[5]}) "
-                  f"{player_state.bonuses[3:5]}({player_state.bonuses[6]})")
+                  f"{player_state.bonuses[3:5]}({player_state.bonuses[6]}) "
+                  f"{Player.assets(player_state, Player.resources(opponent_state), None).resources_cost} "
+                  f"{Player.scientific_symbols(player_state)}")
 
     def on_draw(self):
         self.clear()
@@ -187,6 +191,9 @@ class GameWindow(Window):
             self.move()
 
     def move(self):
+        if Game.is_finished(self.state):
+            return
+
         actions = Game.get_available_actions(self.state)
         selected_action = self.agents[self.state.current_player_index].choose_action(self.state, actions)
         Game.apply_action(self.state, selected_action)
