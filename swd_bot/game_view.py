@@ -116,7 +116,9 @@ class GameWindow(Window):
         self.conflict_pawn.x = self.width // 2 - self.conflict_pawn.height // 2 + pawn_shift
 
         for i, player_state in enumerate(self.state.players_state):
-            print(f"Player {i}: {player_state.coins} {Game.points(self.state, i)[0]}")
+            print(f"Player {i}: {player_state.coins} {Game.points(self.state, i)[0]} "
+                  f"{player_state.bonuses[0:3]}({player_state.bonuses[5]}) "
+                  f"{player_state.bonuses[3:5]}({player_state.bonuses[6]})")
 
     def on_draw(self):
         self.clear()

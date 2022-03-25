@@ -32,22 +32,25 @@ class MCTSAgent(Agent):
         if state.game_status == GameStatus.PICK_WONDER:
             return RuleBasedAgent.pick_wonder(possible_actions)
 
-        print(Game.print(state))
         self.mcts.run(max_time=5, playout_limit=20)
         self.mcts.print_optimal_path()
-        actions_map = {str(action): action for action in possible_actions}
-        actions_score = []
-        for action, child in self.mcts.root.children.items():
-            if self.mcts.root.current_player_index == child.current_player_index:
-                rate = child.rate()
-            else:
-                rate = 1 - child.rate()
-            actions_score.append((action, rate))
-        for action in sorted(actions_score, key=lambda x: -x[1]):
-            action_name = str(action[0])
-            if action_name in actions_map:
-                return actions_map[action_name]
-        return random.choice(possible_actions)
+
+        actions_predictions, _ = self.torch_agent.predict(state)
+        if state.game_status == GameStatus.NORMAL_TURN:
+            actions_probs = TorchAgent.normalize_actions(actions_predictions, possible_actions)
+            actions_probs /= 10
+        else:
+            actions_probs = np.zeros(len(possible_actions))
+
+        for i, action in enumerate(possible_actions):
+            if str(action) in self.mcts.root.children:
+                child = self.mcts.root.children[str(action)]
+                if self.mcts.root.current_player_index == child.current_player_index:
+                    rate = child.rate()
+                else:
+                    rate = 1 - child.rate()
+                actions_probs[i] += rate
+        return possible_actions[actions_probs.argmax()]
 
     def on_action_applied(self, action: Action, new_state: GameState):
         self.mcts.shrink_tree(action, new_state)
