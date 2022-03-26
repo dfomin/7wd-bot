@@ -30,7 +30,7 @@ class MCTS:
         if state.cards_board_state.preset is not None:
             card_ids = []
             purple_card_ids = []
-            for i in np.transpose(np.where(state.cards_board_state.card_places == -1)):
+            for i in np.transpose(np.where(state.cards_board_state.card_places == CLOSED_CARD)):
                 card_id = state.cards_board_state.preset[2][tuple(i)]
                 if card_id >= 66:
                     purple_card_ids.append(card_id)
