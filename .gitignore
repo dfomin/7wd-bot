@@ -9,3 +9,4 @@ datasets/
 *.pt
 multirun.yaml
 *.webp
+*.dat

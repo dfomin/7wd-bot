@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Tuple, Optional, List, Dict, Any
+from typing import Tuple, Optional, List, Dict, Any, Union
 
 import numpy as np
 from swd.action import PickWonderAction, PickProgressTokenAction, BuyCardAction, BuildWonderAction, DiscardCardAction, \
@@ -13,7 +13,8 @@ from swd.states.game_state import GameState, GameStatus
 from swd.states.military_state_track import MilitaryTrackState
 from swd.states.player_state import PlayerState
 
-from swd_bot.sevenee import SeveneeLoader
+from swd_bot.thirdparty.loader import GameLogLoader
+from swd_bot.thirdparty.sevenee import SeveneeLoader
 
 CARDS_MAP = {
     100: 0,
@@ -105,9 +106,9 @@ ACTIONS_MAP: Dict[int, type] = {
 }
 
 
-class SwdioLoader:
+class SwdioLoader(GameLogLoader):
     @staticmethod
-    def load(path: Path) -> Tuple[Optional[GameState], Optional[List[RecordedAgent]]]:
+    def load(path: Union[str, Path]) -> Tuple[Optional[GameState], Optional[List[RecordedAgent]]]:
         game_log = json.loads(path.read_text())
         return SwdioLoader.process(game_log)
 

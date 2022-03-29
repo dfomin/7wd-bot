@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Union
 
 import numpy as np
 from swd.action import Action, BuyCardAction, DiscardCardAction, DestroyCardAction, PickWonderAction, BuildWonderAction, \
@@ -11,10 +11,12 @@ from swd.game import GameState, GameStatus
 from swd.military_track import MilitaryTrackState
 from swd.player import PlayerState
 
+from swd_bot.thirdparty.loader import GameLogLoader
 
-class SeveneeLoader:
+
+class SeveneeLoader(GameLogLoader):
     @staticmethod
-    def load(path: Path) -> Tuple[Optional[GameState], Optional[List[RecordedAgent]]]:
+    def load(path: Union[str, Path]) -> Tuple[Optional[GameState], Optional[List[RecordedAgent]]]:
         game_log = json.loads(path.read_text())
 
         if game_log["result"] == "TERMINATED":

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from swd.game import Game
 
 from swd_bot.agents.torch_agent import TorchAgent
-from swd_bot.swdio import SwdioLoader, ACTIONS_MAP
+from swd_bot.thirdparty.swdio import SwdioLoader, ACTIONS_MAP
 
 app = FastAPI()
 

@@ -128,7 +128,7 @@ class MCTS:
             if node.current_player_index == player_index:
                 node.wins += wins
             else:
-                node.wins += 1 - wins
+                node.wins += total_games - wins
             node = node.parent
 
     def create_next_node(self, state: GameState, action: Action) -> GameTreeNode:
