@@ -8,7 +8,7 @@ from swd.action import PickWonderAction, BuyCardAction, DiscardCardAction, Build
     PickStartPlayerAction, DestroyCardAction
 from swd.agents import Agent
 from swd.bonuses import CARD_COLOR, BONUSES
-from swd.cards_board import NO_CARD
+from swd.cards_board import NO_CARD, CLOSED_CARD
 from swd.entity_manager import EntityManager
 from swd.game import Game
 from swd.states.game_state import GameState, GameStatus
@@ -43,6 +43,7 @@ class GameWindow(Window):
 
         self.selected_wonder = None
         self.editor_pos = None
+        self.editor_wonder = None
 
         self.card_sprites = []
         self.pick_wonder_sprites = []
@@ -50,6 +51,7 @@ class GameWindow(Window):
         self.progress_tokens_sprites = []
         self.card_list_sprites = []
         self.progress_tokens_list_sprites = []
+        self.wonder_list_sprites = []
 
         self.military_track = Sprite(pyglet.resource.image("resources/board.webp"))
         self.military_track.scale = 0.5
@@ -141,22 +143,46 @@ class GameWindow(Window):
 
     def on_mouse_release(self, x, y, button, modifiers):
         if self.mode == Mode.EDITOR:
-            if self.editor_pos is None:
+            if self.editor_pos is None and self.editor_wonder is None:
                 for sprite in reversed(self.card_sprites):
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
-                        if self.editor_pos is None:
-                            self.editor_pos = sprite.pos
-                            break
-            else:
+                        self.editor_pos = sprite.pos
+                        break
+                for sprite in self.wonder_sprites:
+                    if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
+                        self.editor_wonder = sprite.wonder_id
+                        break
+            elif self.editor_pos is not None:
                 for sprite in self.card_list_sprites:
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
                         old_id = self.state.cards_board_state.card_places[self.editor_pos]
                         if old_id != sprite.card_id:
+                            card_places = self.state.cards_board_state.card_places
+                            if sprite.card_id in card_places:
+                                card_places[card_places == sprite.card_id] = CLOSED_CARD
                             self.state.cards_board_state.card_places[self.editor_pos] = sprite.card_id
                             for array in [self.state.cards_board_state.card_ids,
                                           self.state.cards_board_state.purple_card_ids]:
                                 array[array == sprite.card_id] = old_id
                         self.editor_pos = None
+            elif self.editor_wonder is not None:
+                for sprite in self.wonder_list_sprites:
+                    if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
+                        for player_state in self.state.players_state:
+                            for i in range(len(player_state.wonders)):
+                                if player_state.wonders[i][0] == self.editor_wonder:
+                                    player_state.wonders[i] = sprite.wonder_id, None
+                                    self.editor_wonder = None
+                                    break
+                for sprite in self.progress_tokens_list_sprites:
+                    if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
+                        if sprite.progress_token in self.state.progress_tokens:
+                            self.state.progress_tokens.remove(sprite.progress_token)
+                            self.state.rest_progress_tokens.append(sprite.progress_token)
+                        elif sprite.progress_token in self.state.rest_progress_tokens:
+                            self.state.rest_progress_tokens.remove(sprite.progress_token)
+                            self.state.progress_tokens.append(sprite.progress_token)
+
             self.state_updated()
             return
 
@@ -252,10 +278,7 @@ class GameWindow(Window):
             self.draw_cards_and_tokens([x.card_id for x in Game.get_available_actions(self.state)], [])
 
     def draw_editor(self):
-        if self.editor_pos is None:
-            for sprite in self.card_sprites:
-                sprite.draw()
-        else:
+        if self.editor_pos is not None:
             card_ids = []
             if self.state.age == 0:
                 card_ids = list(range(23))
@@ -264,6 +287,14 @@ class GameWindow(Window):
             elif self.state.age == 2:
                 card_ids = list(range(46, 73))
             self.draw_cards_and_tokens(card_ids, [])
+        elif self.editor_wonder is not None:
+            self.draw_wonders()
+        else:
+            for sprite in self.card_sprites:
+                sprite.draw()
+
+            for sprite in self.wonder_sprites:
+                sprite.draw()
 
     def draw_player(self, player_index: int):
         player_state: PlayerState = self.state.players_state[player_index]
@@ -271,6 +302,26 @@ class GameWindow(Window):
 
     def draw_discard_pile(self):
         self.draw_cards_and_tokens(self.state.discard_pile, self.state.rest_progress_tokens)
+
+    def draw_wonders(self):
+        self.wonder_list_sprites = []
+        self.progress_tokens_list_sprites = []
+
+        for i in range(EntityManager.wonders_count()):
+            sprite = WonderSprite(i)
+            sprite.x = (i % 4) * sprite.width
+            sprite.y = self.height - sprite.height * (i // 4 + 1)
+            self.wonder_list_sprites.append(sprite)
+            sprite.draw()
+
+        for i, name in enumerate(EntityManager.progress_token_names()):
+            sprite = ProgressTokenSprite(name)
+            sprite.x = i * sprite.width
+            sprite.y = 0
+            if name in self.state.rest_progress_tokens:
+                sprite.opacity = 128
+            self.progress_tokens_list_sprites.append(sprite)
+            sprite.draw()
 
     def draw_cards_and_tokens(self, cards: List[int], tokens: List[str]):
         card_ids = []
