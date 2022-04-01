@@ -8,7 +8,7 @@ from swd.action import PickWonderAction, BuyCardAction, DiscardCardAction, Build
     PickStartPlayerAction, DestroyCardAction
 from swd.agents import Agent
 from swd.bonuses import CARD_COLOR, BONUSES
-from swd.cards_board import NO_CARD, CLOSED_CARD
+from swd.cards_board import NO_CARD, CLOSED_CARD, CLOSED_PURPLE_CARD
 from swd.entity_manager import EntityManager
 from swd.game import Game
 from swd.states.game_state import GameState, GameStatus
@@ -38,6 +38,7 @@ class GameWindow(Window):
         super(GameWindow, self).__init__(1280, 720)
 
         self.state = state
+        self.prev_state = None
         self.agents = agents
         self.mode = Mode.GAME_BOARD
 
@@ -146,7 +147,13 @@ class GameWindow(Window):
             if self.editor_pos is None and self.editor_wonder is None:
                 for sprite in reversed(self.card_sprites):
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
-                        self.editor_pos = sprite.pos
+                        if button & mouse.LEFT:
+                            self.editor_pos = sprite.pos
+                        elif self.state.age == 2:
+                            if self.state.cards_board_state.card_places[sprite.pos] == CLOSED_CARD:
+                                self.state.cards_board_state.card_places[sprite.pos] = CLOSED_PURPLE_CARD
+                            elif self.state.cards_board_state.card_places[sprite.pos] == CLOSED_PURPLE_CARD:
+                                self.state.cards_board_state.card_places[sprite.pos] = CLOSED_CARD
                         break
                 for sprite in self.wonder_sprites:
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
@@ -353,6 +360,9 @@ class GameWindow(Window):
             self.mode = Mode.DISCARD_PILE
         elif symbol == key._4:
             self.mode = Mode.EDITOR
+        elif symbol == key._5:
+            self.state = self.prev_state.clone()
+            self.state_updated()
         elif symbol == key._0:
             self.mode = Mode.GAME_BOARD
         elif symbol == key.ESCAPE:
@@ -361,6 +371,7 @@ class GameWindow(Window):
             self.move()
 
     def apply_action(self, action: Action):
+        self.prev_state = self.state.clone()
         Game.apply_action(self.state, action)
         for agent in self.agents:
             agent.on_action_applied(action, self.state)
