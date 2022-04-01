@@ -6,8 +6,10 @@ import numpy as np
 from swd.action import PickWonderAction, PickProgressTokenAction, BuyCardAction, BuildWonderAction, DiscardCardAction, \
     PickStartPlayerAction, DestroyCardAction, PickDiscardedCardAction, Action
 from swd.agents import RecordedAgent
-from swd.cards_board import AGES, NO_CARD
+from swd.bonuses import BONUSES
+from swd.cards_board import AGES, NO_CARD, CLOSED_CARD, CLOSED_PURPLE_CARD
 from swd.entity_manager import EntityManager
+from swd.player import Player
 from swd.states.cards_board_state import CardsBoardState
 from swd.states.game_state import GameState, GameStatus
 from swd.states.military_state_track import MilitaryTrackState
@@ -17,6 +19,9 @@ from swd_bot.thirdparty.loader import GameLogLoader
 from swd_bot.thirdparty.sevenee import SeveneeLoader
 
 CARDS_MAP = {
+    -2: CLOSED_PURPLE_CARD,
+    -1: NO_CARD,
+    0: CLOSED_CARD,
     100: 0,
     101: 1,
     102: 2,
@@ -106,6 +111,18 @@ ACTIONS_MAP: Dict[int, type] = {
 }
 
 
+PHASE_TO_GAME_STATUS: Dict[int, GameStatus] = {
+    1: GameStatus.PICK_WONDER,
+    2: GameStatus.NORMAL_TURN,
+    3: GameStatus.PICK_START_PLAYER,
+    4: GameStatus.PICK_PROGRESS_TOKEN,
+    5: GameStatus.PICK_REST_PROGRESS_TOKEN,
+    6: GameStatus.DESTROY_BROWN,
+    7: GameStatus.SELECT_DISCARDED,
+    10: GameStatus.FINISHED
+}
+
+
 class SwdioLoader(GameLogLoader):
     @staticmethod
     def load(path: Union[str, Path]) -> Tuple[Optional[GameState], Optional[List[RecordedAgent]]]:
@@ -131,7 +148,7 @@ class SwdioLoader(GameLogLoader):
             cards_preset[age][AGES[age] > 0] = epoch_cards
 
         actions: List[List[Action]] = [[], []]
-        for i, action_item in enumerate(game_log):
+        for _, action_item in enumerate(game_log):
             move = action_item["move"]
             action_id = move["id"]
             if action_id in ACTIONS_MAP:
@@ -195,3 +212,132 @@ class SwdioLoader(GameLogLoader):
             result["player"] = action.player_index
 
         return result
+
+    @staticmethod
+    def parse_state(state: Dict[str, Any]):
+        age = state["state"]["age"] - 1
+        current_player_index = int(state["state"]["me"]["name"] != state["host"]["name"])
+        progress_tokens = [EntityManager.progress_token_names()[x - 1] for x in state["state"]["tokens"]]
+        discard_pile = [CARDS_MAP[x] for x in state["state"]["cardItems"]["discarded"] or []]
+        if state["state"]["dialogItems"]["wonders"] is not None:
+            wonders = [x - 1 for x in state["state"]["dialogItems"]["wonders"]]
+        else:
+            wonders = []
+
+        player0_state = state["state"]["me"] if current_player_index == 0 else state["state"]["enemy"]
+        player1_state = state["state"]["me"] if current_player_index == 1 else state["state"]["enemy"]
+
+        players_state = [
+            SwdioLoader.parse_player_state(0, player0_state),
+            SwdioLoader.parse_player_state(1, player1_state)
+        ]
+
+        rest_progress_tokens = []
+        for progress_token in EntityManager.progress_token_names():
+            if progress_token in progress_tokens:
+                continue
+            if progress_token in players_state[0].progress_tokens:
+                continue
+            if progress_token in players_state[1].progress_tokens:
+                continue
+            rest_progress_tokens.append(progress_token)
+
+        military_track_state = MilitaryTrackState()
+        military_track_state.conflict_pawn = player0_state["track"]["pos"]
+        if player1_state["track"]["pos"] > 0:
+            military_track_state.conflict_pawn = -player0_state["track"]["pos"]
+        if player0_state["track"]["maxZone"] >= 2:
+            military_track_state.military_tokens[2] = 0
+        if player0_state["track"]["maxZone"] >= 3:
+            military_track_state.military_tokens[3] = 0
+        if player1_state["track"]["maxZone"] >= 2:
+            military_track_state.military_tokens[1] = 0
+        if player1_state["track"]["maxZone"] >= 3:
+            military_track_state.military_tokens[0] = 0
+
+        game_status = PHASE_TO_GAME_STATUS[state["state"]["phase"]]
+        if game_status == GameStatus.DESTROY_BROWN:
+            cards_to_destroy = state["state"]["dialogItems"].get("cards", [])
+            if len(cards_to_destroy) > 0:
+                gray_index = BONUSES.index("gray")
+                if EntityManager.card(CARDS_MAP[cards_to_destroy[0]]).bonuses[gray_index] > 0:
+                    game_status = GameStatus.DESTROY_GRAY
+
+        winner = state["state"].get("winner", None)
+        if winner is not None:
+            if winner == state["host"]["name"]:
+                winner = 0
+            if winner == state["guest"]["name"]:
+                winner = 1
+            if winner != 0 and winner != 1:
+                winner = None
+
+        mask = AGES[age]
+        card_places = mask + NO_CARD
+        card_places[mask > 0] = list(map(lambda x: CARDS_MAP[x], state["state"]["cardItems"]["layout"]))
+        age_cards = []
+        if age == 0:
+            age_cards = range(0, 23)
+        elif age == 1:
+            age_cards = range(23, 46)
+        elif age == 2:
+            age_cards = range(46, 73)
+        card_ids = []
+        purple_card_ids = []
+
+        for card_id in age_cards:
+            if card_id in card_places:
+                continue
+            if card_id in players_state[0].cards:
+                continue
+            if card_id in players_state[1].cards:
+                continue
+            if card_id in discard_pile:
+                continue
+            if card_id in map(lambda x: x[1], players_state[0].wonders):
+                continue
+            if card_id in map(lambda x: x[1], players_state[1].wonders):
+                continue
+            if card_id < 66:
+                card_ids.append(card_id)
+            else:
+                purple_card_ids.append(card_id)
+
+        cards_board_state = CardsBoardState(age, card_places, np.array(card_ids), np.array(purple_card_ids), None)
+
+        state = GameState(age,
+                          current_player_index,
+                          progress_tokens,
+                          rest_progress_tokens,
+                          discard_pile,
+                          False,
+                          wonders,
+                          players_state,
+                          military_track_state,
+                          game_status,
+                          winner,
+                          cards_board_state,
+                          {},
+                          None)
+        return state
+
+    @staticmethod
+    def parse_player_state(player_index: int, player_state: Dict[str, Any]) -> PlayerState:
+        cards = []
+        for cards_list in player_state["cards"]["data"].values():
+            for card in cards_list:
+                cards.append(CARDS_MAP[card])
+        wonders = []
+        for wonder, card in player_state["wonders"]["constructed"].items():
+            wonders.append((int(wonder) - 1, CARDS_MAP[card] if CARDS_MAP[card] > 0 else None))
+        tokens = [EntityManager.progress_token_names()[x - 1] for x in player_state["tokens"]["list"]]
+        state = PlayerState(player_index, coins=player_state["treasure"]["coins"])
+        for card in cards:
+            Player.add_card(state, EntityManager.card(card))
+        for wonder, card in wonders:
+            Player.add_wonder(state, wonder)
+            if card is not None:
+                Player.build_wonder(state, wonder, card)
+        for token in tokens:
+            Player.add_progress_token(state, EntityManager.progress_token(token))
+        return state

@@ -3,13 +3,30 @@ from typing import Dict, List, Any
 from fastapi import FastAPI
 from swd.game import Game
 
+from swd_bot.agents.mcts_agent import MCTSAgent
 from swd_bot.agents.torch_agent import TorchAgent
 from swd_bot.thirdparty.swdio import SwdioLoader, ACTIONS_MAP
 
 app = FastAPI()
 
 
-@app.post("/7wd-bot/")
+@app.post("/7wd-bot/state/")
+def process_game_state(state_description: Dict[str, Any]):
+    state = SwdioLoader.parse_state(state_description)
+
+    if not Game.is_finished(state):
+        agent = MCTSAgent(state)
+        actions = Game.get_available_actions(state)
+        selected_action = agent.choose_action(state, actions)
+        print(selected_action)
+        for action_id, action_type in ACTIONS_MAP.items():
+            if action_type == type(selected_action):
+                return SwdioLoader.encode_action(selected_action)
+
+    return {"winner": state.winner}
+
+
+@app.post("/7wd-bot/log/")
 def process_game_log(log: List[Dict[str, Any]]):
     state, agents = SwdioLoader.process(log)
     while not Game.is_finished(state):

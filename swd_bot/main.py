@@ -6,22 +6,19 @@ import pandas as pd
 import pyglet
 import torch
 from swd.action import BuyCardAction, DiscardCardAction, BuildWonderAction
-from swd.agents import Agent, RecordedAgent, ConsoleAgent, RandomAgent
+from swd.agents import Agent, RecordedAgent, ConsoleAgent
 from swd.entity_manager import EntityManager
 from swd.game import Game
 from swd.states.game_state import GameState
 from tqdm import tqdm
 
 from swd_bot.agents.mcts_agent import MCTSAgent
-from swd_bot.agents.torch_agent import TorchAgent
 from swd_bot.data_providers.feature_extractor import FlattenEmbeddingsFeatureExtractor
-from swd_bot.data_providers.torch_data_provider import TorchDataset
+from swd_bot.editor.editor import play_against_ai
 from swd_bot.game_features import GameFeatures
-from swd_bot.game_view import GameWindow
-from swd_bot.model.torch_models import TorchBaseline, TorchBaselineEmbeddings
-from swd_bot.sevenee import SeveneeLoader
-from swd_bot.state_features import StateFeatures
-from swd_bot.swdio import SwdioLoader
+from swd_bot.model.torch_models import TorchBaseline
+from swd_bot.test.correctness import test_games_correctness
+from swd_bot.thirdparty.sevenee import SeveneeLoader
 
 
 def generate_words():
@@ -147,50 +144,17 @@ def test_model():
     print(correct / all)
 
 
-def play_against_ai(state: GameState):
-    agents = [ConsoleAgent(), MCTSAgent(state)]
-    while not Game.is_finished(state):
-        actions = Game.get_available_actions(state)
-        print(Game.print(state))
-        agent = agents[state.current_player_index]
-        selected_action = agent.choose_action(state, actions)
-        Game.apply_action(state, selected_action)
-        for agent in agents:
-            agent.on_action_applied(selected_action, state)
-
-
-def test_game(state: GameState, agents: List[Agent], verbose: bool = False):
-    if verbose:
-        print(state.meta_info["player_names"])
-
-    while not Game.is_finished(state):
-        print(state)
-        actions = Game.get_available_actions(state)
-        if Game.is_finished(state):
-            break
-        agent = agents[state.current_player_index]
-        selected_action = agent.choose_action(state, actions)
-        Game.apply_action(state, selected_action)
-
-    for i, agent in enumerate(agents):
-        if isinstance(agent, RecordedAgent):
-            assert len(agent.actions) == 0
-        else:
-            assert False
-        if "players" in state.meta_info:
-            if verbose:
-                print(state.players_state[i].coins, state.meta_info["players"][i]["coins"])
-            assert state.players_state[i].coins == state.meta_info["players"][i]["coins"]
-
-    if "result" in state.meta_info:
-        if state.meta_info["result"]["victory"] != "tie" and state.winner != state.meta_info["result"]["winnerIndex"]:
-            print(f"Winner: {state.winner}")
-            print(Game.points(state, 0), Game.points(state, 1))
-            print(state.meta_info["result"])
-        if state.meta_info["result"]["victory"] == "tie":
-            assert state.winner == -1
-        else:
-            assert state.winner == state.meta_info["result"]["winnerIndex"]
+# def play_against_ai(state: GameState):
+#     agents = [MCTSAgent(state), ConsoleAgent()]
+#     # agents = [ConsoleAgent(), MCTSAgent(state)]
+#     while not Game.is_finished(state):
+#         actions = Game.get_available_actions(state)
+#         print(Game.print(state))
+#         agent = agents[state.current_player_index]
+#         selected_action = agent.choose_action(state, actions)
+#         Game.apply_action(state, selected_action)
+#         for agent in agents:
+#             agent.on_action_applied(selected_action, state)
 
 
 def extract_state(state: GameState, agents: List[Agent], stop_condition: Callable[[GameState], bool]) -> Optional[GameState]:
@@ -211,20 +175,20 @@ def main():
     # collect_states_actions()
     # collect_games_features()
     # test_model()
-    # play_against_ai()
-    state = Game.create()
-    window = GameWindow(state, [ConsoleAgent(), MCTSAgent(state)])
-    pyglet.app.run()
     # state, agents = SwdioLoader.load(Path("../../7wd/7wdio/log.json"))
     # test_game(state, agents, False)
 
-    # state, agents = SeveneeLoader.load(Path("../../7wd/sevenee/44/1/1/EJGt5TaWTXd7napf4.json"))
+    # state, agents = SeveneeLoader.load(Path("../../7wd/sevenee/45/1/1/PLpAaQ5tguMtsPxW8.json"))
     # print(state.meta_info["player_names"])
     #
     # def f(s: GameState):
-    #     return "PickStartPlayerAction(player_index=0)" in map(str, Game.get_available_actions(s))
+    #     return "PickStartPlayerAction(player_index=0)" in map(str, Game.get_available_actions(s)) and s.age == 2
     # state = extract_state(state, agents, f)
-    # play_against_ai(Game.create())
+    # play_against_ai(state)
+
+    play_against_ai()
+
+    # test_games_correctness("../../7wd/sevenee/", SeveneeLoader)
 
 
 if __name__ == "__main__":
