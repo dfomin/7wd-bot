@@ -1,8 +1,10 @@
 from enum import Enum, auto
 from typing import List, Optional, Tuple
 
+import numpy as np
 import pyglet
 from pyglet.sprite import Sprite
+from pyglet.text import Label
 from pyglet.window import Window, key, mouse
 from swd.action import PickWonderAction, BuyCardAction, DiscardCardAction, BuildWonderAction, Action, \
     PickStartPlayerAction, DestroyCardAction
@@ -11,9 +13,11 @@ from swd.bonuses import CARD_COLOR, BONUSES
 from swd.cards_board import NO_CARD, CLOSED_CARD, CLOSED_PURPLE_CARD
 from swd.entity_manager import EntityManager
 from swd.game import Game
+from swd.player import Player
 from swd.states.game_state import GameState, GameStatus
 from swd.states.player_state import PlayerState
 
+from swd_bot.agents.mcts_agent import MCTSAgent
 from swd_bot.editor.sprites.card_sprite import CardSprite
 from swd_bot.editor.sprites.draft_wonder_sprite import DraftWonderSprite
 from swd_bot.editor.sprites.progress_token_sprite import ProgressTokenSprite
@@ -39,7 +43,9 @@ class GameWindow(Window):
 
         self.state = state
         self.prev_state = None
-        self.agents = agents
+        self.last_action = None
+        # self.agents = agents
+        self.mcts = MCTSAgent(self.state)
         self.mode = Mode.GAME_BOARD
 
         self.selected_wonder = None
@@ -64,6 +70,13 @@ class GameWindow(Window):
         self.conflict_pawn.scale = 0.5
         self.conflict_pawn.rotation = 90
         self.conflict_pawn.y = PAWN_Y
+
+        self.player_labels = [
+            Label("", x=0, y=0, anchor_x="left", anchor_y="bottom"),
+            Label("", x=self.width, y=0, anchor_x="right", anchor_y="bottom")
+        ]
+
+        self.best_move_label = Label("", x=self.width // 2, y=140, anchor_x="center", anchor_y="bottom")
 
         self.state_updated()
 
@@ -121,13 +134,13 @@ class GameWindow(Window):
         if Game.is_finished(self.state):
             print(f"Winner: {self.state.winner}")
 
-        # for i, player_state in enumerate(self.state.players_state):
-        #     opponent_state = self.state.players_state[1 - i]
-        #     print(f"Player {i}: {player_state.coins} {Game.points(self.state, i)[0]} "
-        #           f"{player_state.bonuses[0:3]}({player_state.bonuses[5]}) "
-        #           f"{player_state.bonuses[3:5]}({player_state.bonuses[6]}) "
-        #           f"{Player.assets(player_state, Player.resources(opponent_state), None).resources_cost} "
-        #           f"{Player.scientific_symbols(player_state)}")
+        for i, player_state in enumerate(self.state.players_state):
+            opponent_state = self.state.players_state[1 - i]
+            self.player_labels[i].text = f"{player_state.coins} {Game.points(self.state, i)[0]} " + \
+                                         f"{player_state.bonuses[0:3]}({player_state.bonuses[5]}) " + \
+                                         f"{player_state.bonuses[3:5]}({player_state.bonuses[6]}) " + \
+                                         f"{Player.assets(player_state, Player.resources(opponent_state), None).resources_cost} " + \
+                                         f"{Player.scientific_symbols(player_state)}"
 
     def on_draw(self):
         self.clear()
@@ -143,6 +156,8 @@ class GameWindow(Window):
             self.draw_editor()
 
     def on_mouse_release(self, x, y, button, modifiers):
+        self.best_move_label.text = ""
+
         if self.mode == Mode.EDITOR:
             if self.editor_pos is None and self.editor_wonder is None:
                 for sprite in reversed(self.card_sprites):
@@ -165,12 +180,20 @@ class GameWindow(Window):
                         old_id = self.state.cards_board_state.card_places[self.editor_pos]
                         if old_id != sprite.card_id:
                             card_places = self.state.cards_board_state.card_places
-                            if sprite.card_id in card_places:
-                                card_places[card_places == sprite.card_id] = CLOSED_CARD
+                            card_places[card_places == sprite.card_id] = CLOSED_CARD
+
+                            board_state = self.state.cards_board_state
+
+                            board_state.card_ids = board_state.card_ids[board_state.card_ids != sprite.card_id]
+                            board_state.purple_card_ids = board_state.purple_card_ids[board_state.purple_card_ids != sprite.card_id]
+
+                            if old_id >= 66:
+                                if old_id not in board_state.purple_card_ids:
+                                    board_state.purple_card_ids = np.append(board_state.purple_card_ids, old_id)
+                            elif old_id >= 0:
+                                if old_id not in board_state.card_ids:
+                                    board_state.card_ids = np.append(board_state.card_ids, old_id)
                             self.state.cards_board_state.card_places[self.editor_pos] = sprite.card_id
-                            for array in [self.state.cards_board_state.card_ids,
-                                          self.state.cards_board_state.purple_card_ids]:
-                                array[array == sprite.card_id] = old_id
                         self.editor_pos = None
             elif self.editor_wonder is not None:
                 for sprite in self.wonder_list_sprites:
@@ -191,6 +214,9 @@ class GameWindow(Window):
                             self.state.progress_tokens.append(sprite.progress_token)
 
             self.state_updated()
+            return
+
+        if self.last_action is not None:
             return
 
         available_actions = Game.get_available_actions(self.state)
@@ -262,6 +288,7 @@ class GameWindow(Window):
         self.selected_wonder = None
 
     def draw_game_board(self):
+        self.best_move_label.draw()
         if self.state.game_status in [GameStatus.PICK_WONDER, GameStatus.NORMAL_TURN, GameStatus.PICK_PROGRESS_TOKEN,
                                       GameStatus.PICK_START_PLAYER, GameStatus.FINISHED]:
             for sprite in self.pick_wonder_sprites:
@@ -278,6 +305,9 @@ class GameWindow(Window):
 
             for sprite in self.progress_tokens_sprites:
                 sprite.draw()
+
+            for label in self.player_labels:
+                label.draw()
         elif self.state.game_status == GameStatus.PICK_REST_PROGRESS_TOKEN:
             # self.draw_cards_and_tokens([], [x.progress_token for x in Game.get_available_actions(self.state)])
             self.draw_cards_and_tokens([], self.state.rest_progress_tokens)
@@ -286,14 +316,10 @@ class GameWindow(Window):
 
     def draw_editor(self):
         if self.editor_pos is not None:
-            card_ids = []
-            if self.state.age == 0:
-                card_ids = list(range(23))
-            elif self.state.age == 1:
-                card_ids = list(range(23, 46))
-            elif self.state.age == 2:
-                card_ids = list(range(46, 73))
-            self.draw_cards_and_tokens(card_ids, [])
+            board_cards = list(self.state.cards_board_state.card_places[self.state.cards_board_state.card_places >= 0])
+            card_ids = list(self.state.cards_board_state.card_ids)
+            purple_card_ids = list(self.state.cards_board_state.purple_card_ids)
+            self.draw_cards_and_tokens(board_cards + card_ids + purple_card_ids, [])
         elif self.editor_wonder is not None:
             self.draw_wonders()
         else:
@@ -336,7 +362,8 @@ class GameWindow(Window):
         self.progress_tokens_list_sprites = []
         for color in CARD_COLOR:
             color_index = BONUSES.index(color)
-            card_ids.extend([card_id for card_id in sorted(cards) if EntityManager.card(card_id).bonuses[color_index] > 0])
+            card_ids.extend(
+                [card_id for card_id in sorted(cards) if EntityManager.card(card_id).bonuses[color_index] > 0])
         for i, card_id in enumerate(card_ids):
             sprite = CardSprite(card_id)
             sprite.x = (i % 15) * sprite.width
@@ -362,19 +389,23 @@ class GameWindow(Window):
             self.mode = Mode.EDITOR
         elif symbol == key._5:
             self.state = self.prev_state.clone()
+            self.mcts = MCTSAgent(self.state)
+            self.last_action = None
             self.state_updated()
         elif symbol == key._0:
             self.mode = Mode.GAME_BOARD
         elif symbol == key.ESCAPE:
             self.close()
         elif symbol == key.SPACE:
-            self.move()
+            if self.mode == Mode.GAME_BOARD:
+                self.move()
 
     def apply_action(self, action: Action):
         self.prev_state = self.state.clone()
         Game.apply_action(self.state, action)
-        for agent in self.agents:
-            agent.on_action_applied(action, self.state)
+        self.last_action = action
+        # for agent in self.agents:
+        #     agent.on_action_applied(action, self.state)
         self.deselect_wonder()
         self.state_updated()
 
@@ -382,11 +413,16 @@ class GameWindow(Window):
         if Game.is_finished(self.state):
             return
 
+        self.mcts.on_action_applied(self.last_action, self.state)
+        self.last_action = None
+
         actions = Game.get_available_actions(self.state)
-        selected_action = self.agents[self.state.current_player_index].choose_action(self.state, actions)
-        Game.apply_action(self.state, selected_action)
-        for agent in self.agents:
-            agent.on_action_applied(selected_action, self.state)
-        if Game.is_finished(self.state):
-            print(f"Winner: {self.state.winner}")
-        self.state_updated()
+        selected_action = self.mcts.choose_action(self.state, actions)
+        # selected_action = self.agents[self.state.current_player_index].choose_action(self.state, actions)
+        self.best_move_label.text = str(selected_action)
+        # Game.apply_action(self.state, selected_action)
+        # for agent in self.agents:
+        #     agent.on_action_applied(selected_action, self.state)
+        # if Game.is_finished(self.state):
+        #     print(f"Winner: {self.state.winner}")
+        # self.state_updated()
