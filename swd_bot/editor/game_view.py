@@ -18,6 +18,7 @@ from swd.states.game_state import GameState, GameStatus
 from swd.states.player_state import PlayerState
 
 from swd_bot.agents.mcts_agent import MCTSAgent
+from swd_bot.editor.sprite_loader import SpriteLoader
 from swd_bot.editor.sprites.card_sprite import CardSprite
 from swd_bot.editor.sprites.draft_wonder_sprite import DraftWonderSprite
 from swd_bot.editor.sprites.progress_token_sprite import ProgressTokenSprite
@@ -60,6 +61,11 @@ class GameWindow(Window):
         self.progress_tokens_list_sprites = []
         self.wonder_list_sprites = []
 
+        self.player_marker = Sprite(SpriteLoader.progress_tokens()[3])
+        self.player_marker.scale = 0.5
+        self.player_marker.x = 0
+        self.player_marker.y = 20
+
         self.military_track = Sprite(pyglet.resource.image("resources/board.webp"))
         self.military_track.scale = 0.5
         self.military_track.rotation = -90
@@ -90,6 +96,8 @@ class GameWindow(Window):
             pick_wonders = self.state.wonders[:-4]
         else:
             pick_wonders = self.state.wonders
+
+        self.player_marker.x = 0 if self.state.current_player_index == 0 else self.width - self.player_marker.width
 
         for row, wonder in enumerate(pick_wonders):
             sprite = DraftWonderSprite(wonder)
@@ -302,6 +310,7 @@ class GameWindow(Window):
 
             self.military_track.draw()
             self.conflict_pawn.draw()
+            self.player_marker.draw()
 
             for sprite in self.progress_tokens_sprites:
                 sprite.draw()

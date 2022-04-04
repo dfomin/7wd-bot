@@ -20,7 +20,7 @@ class FeatureExtractor(ABC):
         result = np.zeros(1 + len(card.price.resources) + 1 + len(card.bonuses) + len(ImmediateBonus))
         result[0] = card.price.coins
         result[1: 1 + len(RESOURCES)] = card.price.resources
-        result[1 + len(RESOURCES)] = card.price.chain_symbol
+        # result[1 + len(RESOURCES)] = card.price.chain_symbol
         result[2 + len(RESOURCES): 2 + len(RESOURCES) + len(card.bonuses)] = card.bonuses
         result[2 + len(RESOURCES) + len(card.bonuses):] = [card.immediate_bonus.get(x, 0) for x in ImmediateBonus]
         return result

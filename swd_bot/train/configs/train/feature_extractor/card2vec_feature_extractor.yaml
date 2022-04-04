@@ -1,0 +1,2 @@
+_target_: swd_bot.data_providers.card2vec_feature_extractor.Card2VecFeatureExtractor
+path: ../../notebooks/card2vec_32.npy
