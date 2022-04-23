@@ -42,6 +42,6 @@ class Card2VecFeatureExtractor(FeatureExtractor):
                 c2v = np.ones(self.card2vec.shape[1] + len_bonuses)
             else:
                 c2v = np.zeros(self.card2vec.shape[1] + len_bonuses)
-            cards.extend(list(c2v))
+            output.extend(list(c2v))
 
         return np.array(output), np.array(cards)
