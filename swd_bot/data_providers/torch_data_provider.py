@@ -49,32 +49,40 @@ class Card2VecDataset(Dataset):
 
     def __getitem__(self, index):
         action = self.actions[index]
-        action_id = action.card_id + (0 if str(action)[0] == "B" else EntityManager.cards_count())
+        if str(action)[:3] == "Buy":
+            action_id = action.card_id
+        elif str(action)[:3] == "Dis":
+            action_id = action.card_id + EntityManager.cards_count()
+        elif str(action)[:3] == "Bui":
+            action_id = action.wonder_id + 2 * EntityManager.cards_count()
+        else:
+            raise ValueError
 
         state = self.states[index]
         x = StateFeatures.extract_state_features_dict(state)
 
-        c_id = -1
-        if action_id in x["available_cards"]:  # берем активную карту
-            for i in range(20):
-                c = x["cards_board"][i]
-                if c == action_id:
-                    c_id = i
-                    break
-        else:  # сбрасываем одну из активных карт
-            action_id = action_id - 73
-            for i in range(20):
-                c = x["cards_board"][i]
-                if c == action_id:
-                    c_id = i + 20
-                    break
+        # c_id = -1
+        # if action_id in x["available_cards"]:  # берем активную карту
+        #     for i in range(20):
+        #         c = x["cards_board"][i]
+        #         if c == action_id:
+        #             c_id = i
+        #             break
+        # else:  # сбрасываем одну из активных карт
+        #     action_id = action_id - 73
+        #     for i in range(20):
+        #         c = x["cards_board"][i]
+        #         if c == action_id:
+        #             c_id = i + 20
+        #             break
 
         # active_cards = torch.tensor([1 if crd in x["available_cards"] else 0 for crd in x["cards_board"]] * 2,
         #                             dtype=torch.long)
         features, cards = self.feature_extractor.features(state)
         features = torch.tensor(features, dtype=torch.float)
         cards = torch.tensor(cards, dtype=torch.float)
-        target = torch.tensor(c_id, dtype=torch.long)
+        # target = torch.tensor(c_id, dtype=torch.long)
+        target = torch.tensor(action_id, dtype=torch.long)
 
         winner = state.meta_info["result"].get("winnerIndex", 0)
 

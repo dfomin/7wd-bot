@@ -37,7 +37,6 @@ class Card2VecFeatureExtractor(FeatureExtractor):
                     c2v = -1 * c2v
                 cb = FeatureExtractor.card_features(card=EntityManager.card(card_id)) / 10  # эмбеддинг карты
                 c2v = np.concatenate([c2v, cb])
-                # print(c2v.shape, cb.shape) # 92=8+84
             elif card_id == -1:
                 c2v = np.ones(self.card2vec.shape[1] + len_bonuses)
             else:

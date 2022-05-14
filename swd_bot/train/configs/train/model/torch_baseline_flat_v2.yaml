@@ -1,2 +1,2 @@
 _target_: swd_bot.model.torch_models.TorchBaseline
-features_hidden: 50
+features_hidden: 200
