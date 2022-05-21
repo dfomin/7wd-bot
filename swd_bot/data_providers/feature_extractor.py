@@ -107,3 +107,8 @@ class FlattenEmbeddingsFeatureExtractor(FeatureExtractor):
                 features = FeatureExtractor.card_features(card)
                 output.extend([0] * (len(features) + EntityManager.cards_count()))
         return np.array(output), np.array([])
+
+
+class ManualFeatureExtractor(FeatureExtractor):
+    def features(self, state: GameState) -> Tuple[np.ndarray, np.ndarray]:
+        return np.array(StateFeatures.extract_manual_state_features(state)), np.array([])

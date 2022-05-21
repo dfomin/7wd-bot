@@ -1,9 +1,0 @@
-epochs: 30
-device: cpu
-output_path: ../../models
-model_prefix: model_flat_emb
-defaults:
-  - model: torch_baseline_flat
-  - feature_extractor: flat_emb_feature_extractor
-  - data_provider@train_data_loader: torch_train
-  - data_provider@valid_data_loader: torch_valid

@@ -4,17 +4,16 @@ from omegaconf import DictConfig
 from torch import nn, optim
 
 from swd_bot.data_providers.feature_extractor import FeatureExtractor
+from swd_bot.data_providers.torch_data_provider import TorchDataProvider
 
 
 @hydra.main(config_path="configs", config_name="main")
 def train(config: DictConfig):
     config = config["train"]
-    feature_extractor: FeatureExtractor = hydra.utils.instantiate(config["feature_extractor"])
 
-    train_loader = hydra.utils.instantiate(config["train_data_loader"])
-    train_loader.dataset.feature_extractor = feature_extractor
-    valid_loader = hydra.utils.instantiate(config["valid_data_loader"])
-    valid_loader.dataset.feature_extractor = feature_extractor
+    data_provider: TorchDataProvider = hydra.utils.instantiate(config["data_provider"])
+    train_loader = data_provider.train_data_loader
+    valid_loader = data_provider.valid_data_loader
 
     train_sample = next(iter(train_loader))[0]
     game_features_count = train_sample[0].shape[-1]

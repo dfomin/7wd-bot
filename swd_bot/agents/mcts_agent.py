@@ -32,8 +32,8 @@ class MCTSAgent(Agent):
         if state.game_status == GameStatus.PICK_WONDER:
             return RuleBasedAgent.pick_wonder(possible_actions)
 
-        self.mcts.run(max_time=5, playout_limit=20, simulations=5000)
-        self.mcts.print_optimal_path()
+        self.mcts.run(max_time=5, playout_limit=100, simulations=10000, playouts=100)
+        self.mcts.print_optimal_path(1)
 
         actions_predictions, _ = self.torch_agent.predict(state)
         if state.game_status == GameStatus.NORMAL_TURN:

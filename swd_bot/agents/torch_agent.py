@@ -11,17 +11,17 @@ from swd.states.game_state import GameState, GameStatus
 
 from swd_bot.agents.rule_based_agent import RuleBasedAgent
 from swd_bot.data_providers.card2vec_feature_extractor import Card2VecFeatureExtractor
-from swd_bot.data_providers.feature_extractor import FlattenFeatureExtractor
+from swd_bot.data_providers.feature_extractor import FlattenFeatureExtractor, ManualFeatureExtractor
 from swd_bot.model.torch_models import TorchBaseline
 
 
 class TorchAgent(Agent):
     def __init__(self):
-        self.model = TorchBaseline(600, 0, 50)
-        self.model.load_state_dict(torch.load("../models/model_flat_acc54.67.pth"))
+        self.model = TorchBaseline(122, 0, [50])
+        self.model.load_state_dict(torch.load("../models/model_manual_acc54.05.pth"))
         self.model.eval()
 
-        self.feature_extractor = FlattenFeatureExtractor()
+        self.feature_extractor = ManualFeatureExtractor()
         # self.feature_extractor = Card2VecFeatureExtractor("../notebooks/card2vec_32.npy")
 
     def predict(self, state: GameState) -> Tuple[np.ndarray, np.ndarray]:

@@ -1,5 +1,0 @@
-_target_: swd_bot.data_providers.torch_data_provider.Card2VecDataLoader
-states_path: "../../datasets/buy_discard_build/states_valid.pkl"
-actions_path: "../../datasets/buy_discard_build/actions_valid.pkl"
-batch_size: 256
-shuffle: false

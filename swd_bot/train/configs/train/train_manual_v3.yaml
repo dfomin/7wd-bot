@@ -1,0 +1,8 @@
+epochs: 30
+device: cpu
+output_path: ../../models
+model_prefix: model_manual_v3
+defaults:
+  - model: flat_v3
+  - data_provider: torch
+  - override data_provider/feature_extractor: manual

@@ -91,4 +91,7 @@ class StateFeatures:
 
         features.append(state.military_track_state.conflict_pawn)
 
+        available_cards = [x[0] for x in CardsBoard.available_cards(state.cards_board_state)]
+        features.extend([int(card_id in available_cards) for card_id in range(EntityManager.cards_count())])
+
         return features

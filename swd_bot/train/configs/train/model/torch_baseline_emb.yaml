@@ -1,3 +1,0 @@
-_target_: swd_bot.model.torch_models.TorchBaselineEmbeddings
-game_features_hidden: 50
-cards_features_hidden: 10
