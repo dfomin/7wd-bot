@@ -18,11 +18,10 @@ from swd_bot.model.torch_models import TorchBaseline
 class TorchAgent(Agent):
     def __init__(self):
         self.model = TorchBaseline(122, 0, [50])
-        self.model.load_state_dict(torch.load("../models/model_manual_acc54.05.pth"))
+        self.model.load_state_dict(torch.load("../models/model_manual_v4_acc52.25.pth"))
         self.model.eval()
 
         self.feature_extractor = ManualFeatureExtractor()
-        # self.feature_extractor = Card2VecFeatureExtractor("../notebooks/card2vec_32.npy")
 
     def predict(self, state: GameState) -> Tuple[np.ndarray, np.ndarray]:
         features, cards = self.feature_extractor.features(state)
@@ -61,7 +60,7 @@ class TorchAgent(Agent):
         actions_predictions, _ = self.predict(state)
         actions_probs = TorchAgent.normalize_actions(actions_predictions, possible_actions)
 
-        # return possible_actions[action_probs.argmax()]
+        # return possible_actions[actions_probs.argmax()]
 
         # action_probs = np.power(action_probs, 2)
         # action_probs /= action_probs.sum()

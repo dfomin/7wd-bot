@@ -7,7 +7,7 @@ from pyglet.sprite import Sprite
 from pyglet.text import Label
 from pyglet.window import Window, key, mouse
 from swd.action import PickWonderAction, BuyCardAction, DiscardCardAction, BuildWonderAction, Action, \
-    PickStartPlayerAction, DestroyCardAction
+    PickStartPlayerAction, DestroyCardAction, PickProgressTokenAction
 from swd.agents import Agent
 from swd.bonuses import CARD_COLOR, BONUSES
 from swd.cards_board import NO_CARD, CLOSED_CARD, CLOSED_PURPLE_CARD
@@ -243,10 +243,9 @@ class GameWindow(Window):
         elif self.state.game_status in [GameStatus.PICK_REST_PROGRESS_TOKEN]:
             for sprite in self.progress_tokens_list_sprites:
                 if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
-                    for action in available_actions:
-                        if action.progress_token == sprite.progress_token:
-                            self.apply_action(action)
-                            return
+                    action = PickProgressTokenAction(sprite.progress_token)
+                    self.apply_action(action)
+                    return
         elif self.state.game_status in [GameStatus.PICK_PROGRESS_TOKEN]:
             for sprite in self.progress_tokens_sprites:
                 if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
