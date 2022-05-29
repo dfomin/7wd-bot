@@ -272,7 +272,7 @@ class SwdioLoader(GameLogLoader):
             if winner != 0 and winner != 1:
                 winner = None
 
-        if "layout" in state["state"]["cardItems"]:
+        if "layout" in state["state"]["cardItems"] and state["state"]["cardItems"]["layout"] is not None:
             mask = AGES[age]
             card_places = mask + NO_CARD
             card_places[mask > 0] = list(map(lambda x: CARDS_MAP[x], state["state"]["cardItems"]["layout"]))
