@@ -51,6 +51,6 @@ def process_game_log(log: List[Dict[str, Any]]):
     return {"winner": state.winner}
 
 
-@app.post("/7wd-bot/ping/")
+@app.get("/7wd-bot/ping/")
 def process_game_state():
     return "pong"
