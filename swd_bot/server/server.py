@@ -49,3 +49,8 @@ def process_game_log(log: List[Dict[str, Any]]):
                 return SwdioLoader.encode_action(selected_action)
 
     return {"winner": state.winner}
+
+
+@app.post("/7wd-bot/ping/")
+def process_game_state():
+    return "pong"
