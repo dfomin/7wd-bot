@@ -216,7 +216,7 @@ class SwdioLoader(GameLogLoader):
     @staticmethod
     def parse_state(state: Dict[str, Any]):
         age = state["state"]["age"] - 1
-        current_player_index = int(state["state"]["me"]["name"] != state["host"]["name"])
+        current_player_index = int(state["state"]["me"]["name"] != state["state"]["firstTurn"])
         progress_tokens = [EntityManager.progress_token_names()[x - 1] for x in state["state"]["tokens"]]
         discard_pile = [CARDS_MAP[x] for x in state["state"]["cardItems"]["discarded"] or []]
         if state["state"]["dialogItems"]["wonders"] is not None:
@@ -265,9 +265,9 @@ class SwdioLoader(GameLogLoader):
 
         winner = state["state"].get("winner", None)
         if winner is not None:
-            if winner == state["host"]["name"]:
+            if winner == state["state"]["firstTurn"]:
                 winner = 0
-            if winner == state["guest"]["name"]:
+            if winner == state["state"]["firstTurn"]:
                 winner = 1
             if winner != 0 and winner != 1:
                 winner = None
