@@ -272,38 +272,41 @@ class SwdioLoader(GameLogLoader):
             if winner != 0 and winner != 1:
                 winner = None
 
-        mask = AGES[age]
-        card_places = mask + NO_CARD
-        card_places[mask > 0] = list(map(lambda x: CARDS_MAP[x], state["state"]["cardItems"]["layout"]))
-        age_cards = []
-        if age == 0:
-            age_cards = range(0, 23)
-        elif age == 1:
-            age_cards = range(23, 46)
-        elif age == 2:
-            age_cards = range(46, 73)
-        card_ids = []
-        purple_card_ids = []
+        if "layout" in state["state"]["cardItems"]:
+            mask = AGES[age]
+            card_places = mask + NO_CARD
+            card_places[mask > 0] = list(map(lambda x: CARDS_MAP[x], state["state"]["cardItems"]["layout"]))
+            age_cards = []
+            if age == 0:
+                age_cards = range(0, 23)
+            elif age == 1:
+                age_cards = range(23, 46)
+            elif age == 2:
+                age_cards = range(46, 73)
+            card_ids = []
+            purple_card_ids = []
 
-        for card_id in age_cards:
-            if card_id in card_places:
-                continue
-            if card_id in players_state[0].cards:
-                continue
-            if card_id in players_state[1].cards:
-                continue
-            if card_id in discard_pile:
-                continue
-            if card_id in map(lambda x: x[1], players_state[0].wonders):
-                continue
-            if card_id in map(lambda x: x[1], players_state[1].wonders):
-                continue
-            if card_id < 66:
-                card_ids.append(card_id)
-            else:
-                purple_card_ids.append(card_id)
+            for card_id in age_cards:
+                if card_id in card_places:
+                    continue
+                if card_id in players_state[0].cards:
+                    continue
+                if card_id in players_state[1].cards:
+                    continue
+                if card_id in discard_pile:
+                    continue
+                if card_id in map(lambda x: x[1], players_state[0].wonders):
+                    continue
+                if card_id in map(lambda x: x[1], players_state[1].wonders):
+                    continue
+                if card_id < 66:
+                    card_ids.append(card_id)
+                else:
+                    purple_card_ids.append(card_id)
 
-        cards_board_state = CardsBoardState(age, card_places, np.array(card_ids), np.array(purple_card_ids), None)
+            cards_board_state = CardsBoardState(age, card_places, np.array(card_ids), np.array(purple_card_ids), None)
+        else:
+            cards_board_state = CardsBoardState(0, np.array([]), np.array([]), np.array([]), None)
 
         state = GameState(age,
                           current_player_index,
