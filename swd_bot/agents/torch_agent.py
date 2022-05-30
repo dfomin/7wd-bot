@@ -48,7 +48,7 @@ class TorchAgent(Agent):
 
     def choose_action(self, state: GameState, possible_actions: Sequence[Action]) -> Action:
         if state.game_status == GameStatus.PICK_WONDER:
-            RuleBasedAgent.pick_wonder(possible_actions)
+            return RuleBasedAgent.pick_wonder(possible_actions)
         elif state.game_status == GameStatus.PICK_START_PLAYER:
             for action in possible_actions:
                 if isinstance(action, PickStartPlayerAction) and action.player_index == state.current_player_index:

@@ -220,7 +220,7 @@ class SwdioLoader(GameLogLoader):
         progress_tokens = [EntityManager.progress_token_names()[x - 1] for x in state["state"]["tokens"]]
         discard_pile = [CARDS_MAP[x] for x in state["state"]["cardItems"]["discarded"] or []]
         if state["state"]["dialogItems"]["wonders"] is not None:
-            wonders = [x - 1 for x in state["state"]["dialogItems"]["wonders"]]
+            wonders = [x - 1 for x in state["state"]["dialogItems"]["wonders"] if x > 0]
         else:
             wonders = []
 
