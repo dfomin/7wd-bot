@@ -2,6 +2,7 @@ from typing import Dict, List, Any
 
 from fastapi import FastAPI
 from swd.game import Game
+from swd.states.game_state import GameStatus
 
 from swd_bot.agents.mcts_agent import MCTSAgent
 from swd_bot.agents.torch_agent import TorchAgent
@@ -21,7 +22,17 @@ def process_game_state(state_description: Dict[str, Any]):
         print(selected_action)
         for action_id, action_type in ACTIONS_MAP.items():
             if action_type == type(selected_action):
-                return SwdioLoader.encode_action(selected_action)
+                encoded_action = SwdioLoader.encode_action(selected_action)
+                if state.game_status == GameStatus.PICK_PROGRESS_TOKEN:
+                    encoded_action["id"] = 3
+                elif state.game_status == GameStatus.PICK_REST_PROGRESS_TOKEN:
+                    encoded_action["id"] = 9
+                elif state.game_status == GameStatus.PICK_START_PLAYER:
+                    if state.current_player_index == encoded_action["player"]:
+                        encoded_action["player"] = state_description["state"]["me"]["name"]
+                    else:
+                        encoded_action["player"] = state_description["state"]["enemy"]["name"]
+                return encoded_action
 
     return {"winner": state.winner}
 
@@ -52,5 +63,5 @@ def process_game_log(log: List[Dict[str, Any]]):
 
 
 @app.get("/7wd-bot/ping/")
-def process_game_state():
+def process_ping():
     return "pong"
