@@ -23,6 +23,8 @@ class TorchAgent(Agent):
 
         self.feature_extractor = ManualFeatureExtractor()
 
+        self.rule_based_agent = RuleBasedAgent()
+
     def predict(self, state: GameState) -> Tuple[np.ndarray, np.ndarray]:
         features, cards = self.feature_extractor.features(state)
         pred_actions, pred_winners = self.model(torch.FloatTensor(features)[None], torch.FloatTensor(cards)[None])
@@ -47,15 +49,8 @@ class TorchAgent(Agent):
         return actions_probs
 
     def choose_action(self, state: GameState, possible_actions: Sequence[Action]) -> Action:
-        if state.game_status == GameStatus.PICK_WONDER:
-            return RuleBasedAgent.pick_wonder(possible_actions)
-        elif state.game_status == GameStatus.PICK_START_PLAYER:
-            for action in possible_actions:
-                if isinstance(action, PickStartPlayerAction) and action.player_index == state.current_player_index:
-                    return action
-
         if state.game_status != GameStatus.NORMAL_TURN:
-            return random.choice(possible_actions)
+            return self.rule_based_agent.choose_action(state, possible_actions)
 
         actions_predictions, _ = self.predict(state)
         actions_probs = TorchAgent.normalize_actions(actions_predictions, possible_actions)

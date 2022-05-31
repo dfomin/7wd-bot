@@ -30,7 +30,7 @@ class MCTSAgent(Agent):
 
     def choose_action(self, state: GameState, possible_actions: Sequence[Action]) -> Action:
         if state.game_status == GameStatus.PICK_WONDER:
-            return RuleBasedAgent.pick_wonder(possible_actions)
+            return self.torch_agent.choose_action(state, possible_actions)
 
         self.mcts.run(max_time=5, playout_limit=100, simulations=10000, playouts=100)
         self.mcts.print_optimal_path(1)
