@@ -62,7 +62,7 @@ class RuleBasedAgent(Agent):
             weights["law"] = 100
 
         if abs(state.military_track_state.conflict_pawn) >= 3:
-            weights["law"] = 50
+            weights["strategy"] = 50
 
         for token, _ in sorted(weights.items(), key=lambda x: -x[1]):
             for action in possible_actions:

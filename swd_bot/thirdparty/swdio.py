@@ -232,16 +232,6 @@ class SwdioLoader(GameLogLoader):
             SwdioLoader.parse_player_state(1, player1_state)
         ]
 
-        rest_progress_tokens = []
-        for progress_token in EntityManager.progress_token_names():
-            if progress_token in progress_tokens:
-                continue
-            if progress_token in players_state[0].progress_tokens:
-                continue
-            if progress_token in players_state[1].progress_tokens:
-                continue
-            rest_progress_tokens.append(progress_token)
-
         military_track_state = MilitaryTrackState()
         military_track_state.conflict_pawn = player0_state["track"]["pos"]
         if player1_state["track"]["pos"] > 0:
@@ -262,6 +252,19 @@ class SwdioLoader(GameLogLoader):
                 gray_index = BONUSES.index("gray")
                 if EntityManager.card(CARDS_MAP[cards_to_destroy[0]]).bonuses[gray_index] > 0:
                     game_status = GameStatus.DESTROY_GRAY
+
+        rest_progress_tokens = []
+        if game_status == GameStatus.PICK_REST_PROGRESS_TOKEN:
+            tokens = state["state"]["dialogItems"].get("tokens", [])
+            rest_progress_tokens = [EntityManager.progress_token_names()[x - 1] for x in tokens]
+        for progress_token in EntityManager.progress_token_names():
+            if progress_token in progress_tokens or progress_token in rest_progress_tokens:
+                continue
+            if progress_token in players_state[0].progress_tokens:
+                continue
+            if progress_token in players_state[1].progress_tokens:
+                continue
+            rest_progress_tokens.append(progress_token)
 
         winner = state["state"].get("winner", None)
         if winner is not None:
