@@ -10,8 +10,6 @@ from swd_bot.agents.torch_agent import TorchAgent
 from swd_bot.thirdparty.swdio import SwdioLoader, ACTIONS_MAP
 
 
-logging.basicConfig(filename='logs.log', filemode="a", encoding='utf-8', level=logging.DEBUG)
-
 app = FastAPI()
 
 
@@ -23,7 +21,7 @@ def process_game_state(state_description: Dict[str, Any]):
         agent = MCTSAgent(state)
         actions = Game.get_available_actions(state)
         selected_action = agent.choose_action(state, actions)
-        print(selected_action)
+        logging.info(selected_action)
         for action_id, action_type in ACTIONS_MAP.items():
             if action_type == type(selected_action):
                 encoded_action = SwdioLoader.encode_action(selected_action)
@@ -58,7 +56,7 @@ def process_game_log(log: List[Dict[str, Any]]):
         agent = TorchAgent()
         actions = Game.get_available_actions(state)
         selected_action = agent.choose_action(state, actions)
-        print(selected_action)
+        logging.info(selected_action)
         for action_id, action_type in ACTIONS_MAP.items():
             if action_type == type(selected_action):
                 return SwdioLoader.encode_action(selected_action)
