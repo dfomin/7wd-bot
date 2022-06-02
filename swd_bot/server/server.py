@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List, Any
 
 from fastapi import FastAPI
@@ -7,6 +8,9 @@ from swd.states.game_state import GameStatus
 from swd_bot.agents.mcts_agent import MCTSAgent
 from swd_bot.agents.torch_agent import TorchAgent
 from swd_bot.thirdparty.swdio import SwdioLoader, ACTIONS_MAP
+
+
+logging.basicConfig(filename='logs.log', filemode="a", encoding='utf-8', level=logging.DEBUG)
 
 app = FastAPI()
 
