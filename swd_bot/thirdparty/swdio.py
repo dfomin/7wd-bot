@@ -235,7 +235,7 @@ class SwdioLoader(GameLogLoader):
         military_track_state = MilitaryTrackState()
         military_track_state.conflict_pawn = player0_state["track"]["pos"]
         if player1_state["track"]["pos"] > 0:
-            military_track_state.conflict_pawn = -player0_state["track"]["pos"]
+            military_track_state.conflict_pawn = -player1_state["track"]["pos"]
         if player0_state["track"]["maxZone"] >= 2:
             military_track_state.military_tokens[2] = 0
         if player0_state["track"]["maxZone"] >= 3:
