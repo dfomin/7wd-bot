@@ -6,6 +6,7 @@ import torch
 from swd.action import Action, BuyCardAction, DiscardCardAction, BuildWonderAction, PickWonderAction, \
     PickStartPlayerAction
 from swd.agents import Agent
+from swd.bonuses import ImmediateBonus
 from swd.entity_manager import EntityManager
 from swd.states.game_state import GameState, GameStatus
 
@@ -52,13 +53,19 @@ class TorchAgent(Agent):
         if state.game_status != GameStatus.NORMAL_TURN:
             return self.rule_based_agent.choose_action(state, possible_actions)
 
+        if abs(state.military_track_state.conflict_pawn) >= 6:
+            for action in possible_actions:
+                if isinstance(action, BuyCardAction):
+                    if ImmediateBonus.SHIELD in EntityManager.card(action.card_id).immediate_bonus:
+                        return action
+
         actions_predictions, _ = self.predict(state)
         actions_probs = TorchAgent.normalize_actions(actions_predictions, possible_actions)
 
-        # return possible_actions[actions_probs.argmax()]
+        return possible_actions[actions_probs.argmax()]
 
         # action_probs = np.power(action_probs, 2)
         # action_probs /= action_probs.sum()
         # for prob, action in zip(action_probs, possible_actions):
         #     print(f"{action}: {round(prob, 2)}")
-        return random.choices(possible_actions, weights=actions_probs)[0]
+        # return random.choices(possible_actions, weights=actions_probs)[0]
