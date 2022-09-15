@@ -1,13 +1,10 @@
-import random
 from typing import Sequence
 
 import numpy as np
 from swd.action import Action
 from swd.agents import Agent
-from swd.game import Game
-from swd.states.game_state import GameState, GameStatus
+from swd.game import Game, GameStatus
 
-from swd_bot.agents.rule_based_agent import RuleBasedAgent
 from swd_bot.agents.torch_agent import TorchAgent
 from swd_bot.mcts.mcts import MCTS
 
@@ -15,7 +12,7 @@ from swd_bot.mcts.mcts import MCTS
 class MCTSAgent(Agent):
     mcts: MCTS
 
-    def __init__(self, state: GameState):
+    def __init__(self):
         super().__init__()
 
         self.torch_agent = TorchAgent()
@@ -28,7 +25,7 @@ class MCTSAgent(Agent):
 
         self.mcts = MCTS(state, self.torch_agent, self.torch_agent, evaluation_function)
 
-    def choose_action(self, state: GameState, possible_actions: Sequence[Action]) -> Action:
+    def choose_action(self, game: Game, possible_actions: Sequence[Action]) -> Action:
         if state.game_status == GameStatus.PICK_WONDER:
             return self.torch_agent.choose_action(state, possible_actions)
 

@@ -27,7 +27,7 @@ def train(config: DictConfig):
     output_path = config["output_path"]
     model_prefix = config["model_prefix"]
 
-    action_criterion = nn.CrossEntropyLoss()
+    action_criterion = nn.CrossEntropyLoss(weight=torch.tensor([1] * (73 * 2) + [5] * 12, dtype=torch.float))
     winner_criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 

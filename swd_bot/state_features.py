@@ -1,7 +1,7 @@
 from typing import List, Any, Dict
 
 import numpy as np
-from swd.bonuses import BONUSES, ImmediateBonus, SCIENTIFIC_SYMBOLS_RANGE
+from swd.bonuses import BONUSES, SCIENTIFIC_SYMBOLS_RANGE, INSTANT_BONUSES
 from swd.cards_board import AGES, CardsBoard
 
 from swd.entity_manager import EntityManager
@@ -82,8 +82,9 @@ class StateFeatures:
             if player_state.bonuses[BONUSES.index("theology")] > 0:
                 features.append(len(unbuilt_wonders))
             else:
+                double_turn_index = INSTANT_BONUSES.index("double_turn")
                 features.append(len([x for x in unbuilt_wonders
-                                     if ImmediateBonus.DOUBLE_TURN in EntityManager.wonder(x).immediate_bonus]))
+                                     if EntityManager.wonder(x).instant_bonuses[double_turn_index] > 0]))
             assets = Player.assets(player_state, Player.resources(state.players_state[1 - i]), None)
             features.extend(list(assets.resources))
             features.extend(list(assets.resources_cost))

@@ -3,16 +3,14 @@ from typing import Sequence, Tuple
 
 import numpy as np
 import torch
-from swd.action import Action, BuyCardAction, DiscardCardAction, BuildWonderAction, PickWonderAction, \
-    PickStartPlayerAction
+from swd.action import Action, BuyCardAction, DiscardCardAction, BuildWonderAction
 from swd.agents import Agent
-from swd.bonuses import ImmediateBonus
+from swd.bonuses import INSTANT_BONUSES
 from swd.entity_manager import EntityManager
 from swd.states.game_state import GameState, GameStatus
 
 from swd_bot.agents.rule_based_agent import RuleBasedAgent
-from swd_bot.data_providers.card2vec_feature_extractor import Card2VecFeatureExtractor
-from swd_bot.data_providers.feature_extractor import FlattenFeatureExtractor, ManualFeatureExtractor
+from swd_bot.data_providers.feature_extractor import ManualFeatureExtractor
 from swd_bot.model.torch_models import TorchBaseline
 
 
@@ -56,7 +54,8 @@ class TorchAgent(Agent):
         if abs(state.military_track_state.conflict_pawn) >= 6:
             for action in possible_actions:
                 if isinstance(action, BuyCardAction):
-                    if ImmediateBonus.SHIELD in EntityManager.card(action.card_id).immediate_bonus:
+                    index = INSTANT_BONUSES.index("shield")
+                    if EntityManager.card(action.card_id).instant_bonuses[index] > 0:
                         return action
 
         actions_predictions, _ = self.predict(state)

@@ -1,22 +1,21 @@
 import json
 from pathlib import Path
-from typing import Tuple, Optional, List, Union
+from typing import Tuple, Optional, List, Union, Dict, Any
 
-import numpy as np
-from swd.action import Action, BuyCardAction, DiscardCardAction, DestroyCardAction, PickWonderAction, BuildWonderAction, \
-    PickStartPlayerAction, PickProgressTokenAction, PickDiscardedCardAction
+from swd.action import Action, BuyCardAction, DiscardCardAction, DestroyCardAction, PickWonderAction, \
+    BuildWonderAction, PickStartPlayerAction, PickProgressTokenAction, PickDiscardedCardAction
 from swd.agents import RecordedAgent
-from swd.cards_board import AGES, NO_CARD, CardsBoardState
-from swd.game import GameState, GameStatus
-from swd.military_track import MilitaryTrackState
-from swd.player import PlayerState
+from swd.board_card import BoardCard
+from swd.entity_manager import EntityManager
+from swd.game import Game
+from swd.player import Player
 
 from swd_bot.thirdparty.loader import GameLogLoader
 
 
 class SeveneeLoader(GameLogLoader):
     @staticmethod
-    def load(path: Union[str, Path]) -> Tuple[Optional[GameState], Optional[List[RecordedAgent]]]:
+    def load(path: Union[str, Path]) -> Tuple[Optional[Game], Optional[List[RecordedAgent]]]:
         game_log = json.loads(path.read_text())
 
         if game_log["result"] == "TERMINATED":
@@ -29,51 +28,81 @@ class SeveneeLoader(GameLogLoader):
         tokens = []
         rest_tokens = []
         wonders = []
-        sevenee_cards_preset = []
-        cards_preset = np.zeros((3, AGES[0].shape[0], AGES[0].shape[1]), dtype=int) + NO_CARD
+        cards_preset = []
 
-        actions: List[List[Action]] = [[], []]
+        token_names_map = {}
+
+        actions: List[List[Dict[str, Any]]] = [[], []]
         for i, action_item in enumerate(game_log["actionItems"]):
             agent = action_item["agent"]["t"]
             action = action_item["action"]
             action_type = action["type"]
             if action_type == "drawProgressTokens":
-                tokens = action["progressTokens"]
-                rest_tokens = action["reservedProgressTokens"]
+                for token_id in range(EntityManager.progress_tokens_count()):
+                    token = EntityManager.progress_token(token_id)
+                    token_names_map[token.name] = token.id
+                tokens = [EntityManager.progress_token(token_names_map[name])
+                          for name in action["progressTokens"]]
+                rest_tokens = [EntityManager.progress_token(token_names_map[name])
+                               for name in action["reservedProgressTokens"]]
             elif action_type == "drawWonders":
-                wonders = action["wonders"]
+                wonders = [EntityManager.wonder(wonder_id) for wonder_id in action["wonders"]]
+                for wonder in wonders:
+                    wonder.card = None
             elif action_type == "drawCards":
                 age_cards = []
-                for row in action["cards"]:
-                    for card in row:
+                for row_id, row in enumerate(action["cards"]):
+                    cards_row = []
+                    for column, card in enumerate(row):
                         if card is not None:
-                            age_cards.append(card)
-                sevenee_cards_preset.append(age_cards)
-                for age in range(len(sevenee_cards_preset)):
-                    cards_preset[age][AGES[age] > 0] = sevenee_cards_preset[age]
+                            cards_row.append(EntityManager.card(card))
+                    age_cards.append(cards_row)
+                cards_preset.append(age_cards)
             if agent != "p":
                 continue
             player_index = action["playerIndex"]
             if action_type == "buyCard":
-                buy_action = BuyCardAction(action["card"], SeveneeLoader.card_pos(action["card"], cards_preset))
-                actions[player_index].append(buy_action)
+                actions[player_index].append({
+                    "type": BuyCardAction,
+                    "card_id": action["card"]
+                })
             elif action_type == "discardCard":
-                discard_action = DiscardCardAction(action["card"], SeveneeLoader.card_pos(action["card"], cards_preset))
-                actions[player_index].append(discard_action)
+                actions[player_index].append({
+                    "type": DiscardCardAction,
+                    "card_id": action["card"]
+                })
             elif action_type == "killCard":
-                actions[player_index].append(DestroyCardAction(action["card"]))
+                actions[player_index].append({
+                    "type": DestroyCardAction,
+                    "card_id": action["card"]
+                })
             elif action_type == "pickWonder":
-                actions[player_index].append(PickWonderAction(action["wonder"]))
+                actions[player_index].append({
+                    "type": PickWonderAction,
+                    "wonder_id": action["wonder"]
+                })
             elif action_type == "buildWonder":
-                pos = SeveneeLoader.card_pos(action["card"], cards_preset)
-                build_action = BuildWonderAction(action["wonder"], action["card"], pos)
-                actions[player_index].append(build_action)
+                actions[player_index].append({
+                    "type": BuildWonderAction,
+                    "wonder_id": action["wonder"],
+                    "card_id": action["card"]
+                })
             elif action_type == "pickStartPlayer":
-                actions[player_index].append(PickStartPlayerAction(action["pickedPlayerIndex"]))
+                actions[player_index].append({
+                    "type": PickStartPlayerAction,
+                    "player_index": action["pickedPlayerIndex"]
+                })
             elif action_type == "pickProgressToken":
-                actions[player_index].append(PickProgressTokenAction(action["progressToken"]))
+                token_id = token_names_map[action["progressToken"]]
+                actions[player_index].append({
+                    "type": PickProgressTokenAction,
+                    "token_id": token_id
+                })
             elif action_type == "pickDiscardedCard":
-                actions[player_index].append(PickDiscardedCardAction(action["card"]))
+                actions[player_index].append({
+                    "type": PickDiscardedCardAction,
+                    "card_id": action["card"]
+                })
             else:
                 print(action_type)
                 assert False
@@ -86,26 +115,25 @@ class SeveneeLoader(GameLogLoader):
             agent = RecordedAgent(actions[i])
             agents.append(agent)
 
-        game_state = GameState(0,
-                               0,
-                               tokens,
-                               rest_tokens,
-                               [],
-                               False,
-                               wonders,
-                               [PlayerState(0), PlayerState(1)],
-                               MilitaryTrackState(),
-                               GameStatus.PICK_WONDER,
-                               None,
-                               CardsBoardState(0, np.array([]), np.array([]), np.array([]), cards_preset),
-                               game_log["data"])
-        game_state.meta_info["player_names"] = player_names
-        game_state.meta_info["division"] = int(str(path).split("/")[-3])
-        game_state.meta_info["season"] = int(str(path).split("/")[-4])
-        game_state.meta_info["path"] = str(path)
-        return game_state, agents
+        game = Game()
+        game.progress_tokens = tokens
+        game.rest_progress_tokens = rest_tokens
+        game.wonders = wonders
+        game.players = [Player(0), Player(1)]
+        game.cards_board.preset = cards_preset
+
+        game.meta_info = game_log["data"]
+        game.meta_info["player_names"] = player_names
+        game.meta_info["division"] = int(str(path).split("/")[-3])
+        game.meta_info["season"] = int(str(path).split("/")[-4])
+        game.meta_info["path"] = str(path)
+
+        return game, agents
 
     @staticmethod
-    def card_pos(card_id: int, cards_preset: np.ndarray) -> Tuple[int, int]:
-        index = np.transpose(np.where(cards_preset == card_id))[0]
-        return tuple(index[1:])
+    def card_pos(card_id: int, cards_preset: List[List[List[int]]]) -> Tuple[int, int]:
+        for age_preset in cards_preset:
+            for row_id, row in enumerate(age_preset):
+                if card_id in row:
+                    return row_id, row.index(card_id)
+        raise ValueError

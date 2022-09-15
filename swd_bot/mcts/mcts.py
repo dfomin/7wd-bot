@@ -80,8 +80,8 @@ class MCTS:
                 else:
                     rate = 1 - child.rate()
                 # bonus = 0 if Game.is_finished(child.game_state) else 0.01
-                # ucb[i] = rate + exploration_coefficient * math.sqrt(math.log(node.total_games) / child.total_games) + bonus
-                ucb[i] = rate + exploration_coefficient * math.sqrt(node.total_games) / (child.total_games + 1)
+                ucb[i] = rate + exploration_coefficient * math.sqrt(math.log(node.total_games) / child.total_games)
+                # ucb[i] = rate + exploration_coefficient * math.sqrt(node.total_games) / (child.total_games + 1)
             best_action = None
             for index in (-ucb).argsort():
                 action_name = list(node.children.items())[index][0]

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 import numpy as np
-from swd.bonuses import ImmediateBonus, RESOURCES
+from swd.bonuses import RESOURCES, INSTANT_BONUSES
 from swd.cards import Card
 from swd.entity_manager import EntityManager
 from swd.states.game_state import GameState
@@ -17,12 +17,12 @@ class FeatureExtractor(ABC):
 
     @staticmethod
     def card_features(card: Card) -> np.ndarray:
-        result = np.zeros(1 + len(card.price.resources) + 1 + len(card.bonuses) + len(ImmediateBonus))
+        result = np.zeros(1 + len(card.price.resources) + 1 + len(card.bonuses) + len(INSTANT_BONUSES))
         result[0] = card.price.coins
         result[1: 1 + len(RESOURCES)] = card.price.resources
         # result[1 + len(RESOURCES)] = card.price.chain_symbol
         result[2 + len(RESOURCES): 2 + len(RESOURCES) + len(card.bonuses)] = card.bonuses
-        result[2 + len(RESOURCES) + len(card.bonuses):] = [card.immediate_bonus.get(x, 0) for x in ImmediateBonus]
+        result[2 + len(RESOURCES) + len(card.bonuses):] = card.instant_bonuses
         return result
 
 

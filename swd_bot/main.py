@@ -8,7 +8,6 @@ import torch
 from swd.action import BuyCardAction, DiscardCardAction, BuildWonderAction
 from swd.agents import Agent, RecordedAgent, ConsoleAgent, RandomAgent
 from swd.game import Game
-from swd.states.game_state import GameState
 from tqdm import tqdm
 
 from swd_bot.agents.mcts_agent import MCTSAgent
@@ -225,8 +224,8 @@ def main():
     # agent = MCTSAgent(state)
     # estimate(state, agent)
 
-    from swd_bot.editor.editor import play_against_ai
-    play_against_ai()
+    # from swd_bot.editor.editor import play_against_ai
+    # play_against_ai()
 
     # start = time.time()
     # state = Game.create()
@@ -239,6 +238,7 @@ def main():
     # print(state.winner, time.time() - start)
 
     # test_games_correctness("../../7wd/sevenee/", SeveneeLoader)
+    pass
 
 
 if __name__ == "__main__":
