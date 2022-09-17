@@ -3,7 +3,7 @@ from typing import List, Optional
 import numpy as np
 from swd.action import PickWonderAction
 from swd.agents import RecordedAgent
-from swd.bonuses import BONUSES, ImmediateBonus
+from swd.bonuses import INSTANT_BONUSES
 from swd.entity_manager import EntityManager
 from swd.game import Game
 from swd.military_track import MilitaryTrack
@@ -47,8 +47,8 @@ class GameFeatures:
         self.double_turns = [0, 0]
         for i, player_state in enumerate(self.wonders_state.players_state):
             for wonder in player_state.wonders:
-                immediate_bonuses = EntityManager.wonder(wonder[0]).immediate_bonus
-                self.double_turns[i] += ImmediateBonus.DOUBLE_TURN in immediate_bonuses
+                instant_bonuses = EntityManager.wonder(wonder[0]).instant_bonuses
+                self.double_turns[i] += INSTANT_BONUSES.index("double_turn") in instant_bonuses
 
         self.winner = state.winner
 
