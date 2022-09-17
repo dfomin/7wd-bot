@@ -9,7 +9,7 @@ from pyglet.window import Window, key, mouse
 from swd.action import PickWonderAction, BuyCardAction, DiscardCardAction, BuildWonderAction, Action, \
     PickStartPlayerAction, PickProgressTokenAction
 from swd.agents import Agent
-from swd.bonuses import CARD_COLOR, BONUSES
+from swd.bonuses import CARD_COLOR, BONUSES, BONUSES_INDEX
 from swd.entity_manager import EntityManager
 from swd.game import Game, GameStatus
 from swd.player import Player
@@ -106,7 +106,7 @@ class GameWindow(Window):
         x_space = None
         for row_index, row in enumerate(self.game.cards_board.card_places):
             for i, board_card in enumerate(row):
-                sprite = CardSprite(board_card.card.id, (row_index, i))
+                sprite = CardSprite(board_card.card.id if board_card.card is not None else -1, (row_index, i))
                 if x_shift is None:
                     x_shift = self.width // 2 - sprite.width - sprite.width // 5
                     x_space = sprite.width // 5
@@ -246,31 +246,30 @@ class GameWindow(Window):
 
         for sprite in self.pick_wonder_sprites:
             if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
-                action = PickWonderAction(sprite.wonder_id)
-                if str(action) in map(str, available_actions):
-                    self.apply_action(action)
-                    return
+                for action in available_actions:
+                    if isinstance(action, PickWonderAction) and action.wonder.id == sprite.wonder_id:
+                        self.apply_action(action)
+                        return
 
         for sprite in self.card_sprites:
             if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
-                action = None
                 if self.selected_wonder is not None:
                     for action in available_actions:
                         if isinstance(action, BuildWonderAction) \
                                 and action.wonder.id == self.selected_wonder.wonder_id \
                                 and action.card.id == sprite.card_id:
-                            break
+                            self.apply_action(action)
+                            return
                 elif button & mouse.LEFT:
                     for action in available_actions:
                         if isinstance(action, BuyCardAction) and action.card.id == sprite.card_id:
-                            break
+                            self.apply_action(action)
+                            return
                 else:
                     for action in available_actions:
                         if isinstance(action, DiscardCardAction) and action.card.id == sprite.card_id:
-                            break
-                if action is not None:
-                    self.apply_action(action)
-                    return
+                            self.apply_action(action)
+                            return
 
         wonders = self.game.players[self.game.current_player_index].wonders
         unbuilt_wonders = [x.id for x in wonders if not x.is_built]
@@ -375,9 +374,10 @@ class GameWindow(Window):
         self.card_list_sprites = []
         self.progress_tokens_list_sprites = []
         for color in CARD_COLOR:
-            color_index = BONUSES.index(color)
-            card_ids.extend(
-                [card_id for card_id in sorted(cards) if EntityManager.card(card_id).bonuses[color_index] > 0])
+            color_index = BONUSES_INDEX(color)
+            card_ids.extend([card_id
+                             for card_id in sorted(cards)
+                             if color_index in EntityManager.card(card_id).bonuses])
         for i, card_id in enumerate(card_ids):
             sprite = CardSprite(card_id)
             sprite.x = (i % 15) * sprite.width
@@ -427,7 +427,7 @@ class GameWindow(Window):
         if self.game.is_finished:
             return
 
-        self.mcts.on_action_applied(self.last_action, self.game)
+        self.mcts.on_action_applied(self.last_action, self.game.clone())
         self.last_action = None
 
         actions = self.game.get_available_actions()

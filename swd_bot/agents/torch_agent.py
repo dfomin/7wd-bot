@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from swd.action import Action, BuyCardAction, DiscardCardAction, BuildWonderAction
 from swd.agents import Agent
-from swd.bonuses import INSTANT_BONUSES
+from swd.bonuses import INSTANT_BONUSES, INSTANT_BONUSES_INDEX
 from swd.entity_manager import EntityManager
 from swd.game import Game, GameStatus
 
@@ -54,8 +54,8 @@ class TorchAgent(Agent):
         if abs(game.military_track.conflict_pawn) >= 6:
             for action in possible_actions:
                 if isinstance(action, BuyCardAction):
-                    index = INSTANT_BONUSES.index("shield")
-                    if EntityManager.card(action.card.id).instant_bonuses[index] > 0:
+                    index = INSTANT_BONUSES_INDEX["shield"]
+                    if index in EntityManager.card(action.card.id).instant_bonuses:
                         return action
 
         actions_predictions, _ = self.predict(game)

@@ -17,7 +17,7 @@ class RuleBasedAgent(Agent):
             return self.pick_progress_token(game, possible_actions, False)
         elif game.game_status == GameStatus.PICK_START_PLAYER:
             for action in possible_actions:
-                if isinstance(action, PickStartPlayerAction) and action.player_index == state.current_player_index:
+                if isinstance(action, PickStartPlayerAction) and action.player_index == game.current_player_index:
                     return action
         elif game.game_status in [GameStatus.DESTROY_BROWN, GameStatus.DESTROY_GRAY, GameStatus.SELECT_DISCARDED]:
             best_action: Optional[PickDiscardedCardAction] = None

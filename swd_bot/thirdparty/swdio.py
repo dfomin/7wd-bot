@@ -6,7 +6,7 @@ import numpy as np
 from swd.action import PickWonderAction, PickProgressTokenAction, BuyCardAction, BuildWonderAction, DiscardCardAction, \
     PickStartPlayerAction, DestroyCardAction, PickDiscardedCardAction, Action
 from swd.agents import RecordedAgent
-from swd.bonuses import BONUSES
+from swd.bonuses import BONUSES, BONUSES_INDEX
 from swd.cards_board import AGES, NO_CARD, CLOSED_CARD, CLOSED_PURPLE_CARD
 from swd.entity_manager import EntityManager
 from swd.player import Player
@@ -201,13 +201,15 @@ class SwdioLoader(GameLogLoader):
         reversed_actions_map = {v: k for k, v in ACTIONS_MAP.items()}
         reversed_cards_map = {v: k for k, v in CARDS_MAP.items()}
         result = {"id": reversed_actions_map[type(action)]}
+        progress_token_names = [EntityManager.progress_token(i).name
+                                for i in range(EntityManager.progress_tokens_count())]
 
         if hasattr(action, "card_id"):
             result["card"] = reversed_cards_map[action.card_id]
         if hasattr(action, "wonder_id"):
             result["wonder"] = action.wonder_id + 1
         if hasattr(action, "progress_token"):
-            result["token"] = EntityManager.progress_token_names().index(action.progress_token) + 1
+            result["token"] = progress_token_names.index(action.progress_token) + 1
         if hasattr(action, "player_index"):
             result["player"] = action.player_index
 
@@ -215,9 +217,12 @@ class SwdioLoader(GameLogLoader):
 
     @staticmethod
     def parse_state(state: Dict[str, Any]):
+        progress_token_names = [EntityManager.progress_token(i).name
+                                for i in range(EntityManager.progress_tokens_count())]
+
         age = state["state"]["age"] - 1
         current_player_index = int(state["state"]["me"]["name"] != state["state"]["firstTurn"])
-        progress_tokens = [EntityManager.progress_token_names()[x - 1] for x in state["state"]["tokens"]]
+        progress_tokens = [progress_token_names[x - 1] for x in state["state"]["tokens"]]
         discard_pile = [CARDS_MAP[x] for x in state["state"]["cardItems"]["discarded"] or []]
         if state["state"]["dialogItems"]["wonders"] is not None:
             wonders = [x - 1 for x in state["state"]["dialogItems"]["wonders"] if x > 0]
@@ -249,15 +254,15 @@ class SwdioLoader(GameLogLoader):
         if game_status == GameStatus.DESTROY_BROWN:
             cards_to_destroy = state["state"]["dialogItems"].get("cards", [])
             if len(cards_to_destroy) > 0:
-                gray_index = BONUSES.index("gray")
-                if EntityManager.card(CARDS_MAP[cards_to_destroy[0]]).bonuses[gray_index] > 0:
+                gray_index = BONUSES_INDEX("gray")
+                if gray_index in EntityManager.card(CARDS_MAP[cards_to_destroy[0]]).bonuses:
                     game_status = GameStatus.DESTROY_GRAY
 
         rest_progress_tokens = []
         if game_status == GameStatus.PICK_REST_PROGRESS_TOKEN:
             tokens = state["state"]["dialogItems"].get("tokens", [])
-            rest_progress_tokens = [EntityManager.progress_token_names()[x - 1] for x in tokens]
-        for progress_token in EntityManager.progress_token_names():
+            rest_progress_tokens = [progress_token_names[x - 1] for x in tokens]
+        for progress_token in progress_token_names:
             if progress_token in progress_tokens or progress_token in rest_progress_tokens:
                 continue
             if progress_token in players_state[0].progress_tokens:

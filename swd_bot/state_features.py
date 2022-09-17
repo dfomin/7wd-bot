@@ -1,7 +1,6 @@
 from typing import List, Any, Dict
 
-import numpy as np
-from swd.bonuses import BONUSES, SCIENTIFIC_SYMBOLS_RANGE, INSTANT_BONUSES
+from swd.bonuses import BONUSES, SCIENTIFIC_SYMBOLS_RANGE
 
 from swd.entity_manager import EntityManager
 from swd.game import Game
@@ -24,7 +23,7 @@ class StateFeatures:
             features.append(player.coins)
             unbuilt_wonders = [x.id for x in player.wonders if not x.is_built]
             features.extend([int(x in unbuilt_wonders) for x in range(EntityManager.wonders_count())])
-            features.extend([player.bonuses[x] for x in range(len(BONUSES))])
+            features.extend([player.bonuses.get(x, 0) for x in range(len(BONUSES))])
 
         features.append(game.military_track.conflict_pawn)
         features.extend(game.military_track.military_tokens)
@@ -72,18 +71,16 @@ class StateFeatures:
         for i, player in enumerate(game.players):
             features.append(player.coins)
             features.extend(list(Game.points(game)[i]))
-            unbuilt_wonders = [x.id for x in player.wonders if not x.is_built]
+            unbuilt_wonders = [x for x in player.wonders if not x.is_built]
             features.append(len(unbuilt_wonders))
-            if player.bonuses[BONUSES.index("theology")] > 0:
+            if player.has_theology:
                 features.append(len(unbuilt_wonders))
             else:
-                double_turn_index = INSTANT_BONUSES.index("double_turn")
-                features.append(len([x for x in unbuilt_wonders
-                                     if EntityManager.wonder(x).instant_bonuses[double_turn_index] > 0]))
+                features.append(len([x for x in unbuilt_wonders if x.double_turn]))
             assets = player.assets(game.players[1 - i].bonuses, None)
             features.extend(list(assets.resources))
             features.extend(list(assets.resources_cost))
-            features.append(np.count_nonzero(player.bonuses[SCIENTIFIC_SYMBOLS_RANGE]))
+            features.append(sum(x in player.bonuses for x in SCIENTIFIC_SYMBOLS_RANGE))
 
         features.append(game.military_track.conflict_pawn)
 

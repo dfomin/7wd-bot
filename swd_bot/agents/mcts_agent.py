@@ -50,4 +50,4 @@ class MCTSAgent(Agent):
         return possible_actions[actions_probs.argmax()]
 
     def on_action_applied(self, action: Action, new_game: Game):
-        self.mcts.shrink_tree(action, new_game)
+        self.mcts.shrink_tree(str(action), new_game)
