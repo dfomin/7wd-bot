@@ -7,7 +7,7 @@ from swd.action import Action, BuyCardAction, DiscardCardAction, BuildWonderActi
 from swd.agents import Agent
 from swd.bonuses import INSTANT_BONUSES
 from swd.entity_manager import EntityManager
-from swd.states.game_state import GameState, GameStatus
+from swd.game import Game, GameStatus
 
 from swd_bot.agents.rule_based_agent import RuleBasedAgent
 from swd_bot.data_providers.feature_extractor import ManualFeatureExtractor
@@ -24,8 +24,8 @@ class TorchAgent(Agent):
 
         self.rule_based_agent = RuleBasedAgent()
 
-    def predict(self, state: GameState) -> Tuple[np.ndarray, np.ndarray]:
-        features, cards = self.feature_extractor.features(state)
+    def predict(self, game: Game) -> Tuple[np.ndarray, np.ndarray]:
+        features, cards = self.feature_extractor.features(game)
         pred_actions, pred_winners = self.model(torch.FloatTensor(features)[None], torch.FloatTensor(cards)[None])
         return pred_actions[0].detach().numpy(), pred_winners[0].detach().numpy()
 
@@ -34,11 +34,11 @@ class TorchAgent(Agent):
         actions_probs = np.zeros(len(possible_actions))
         for i, action in enumerate(possible_actions):
             if isinstance(action, BuyCardAction):
-                actions_probs[i] = action_predictions[action.card_id]
+                actions_probs[i] = action_predictions[action.card.id]
             elif isinstance(action, DiscardCardAction):
-                actions_probs[i] = action_predictions[action.card_id + EntityManager.cards_count()]
+                actions_probs[i] = action_predictions[action.card.id + EntityManager.cards_count()]
             elif isinstance(action, BuildWonderAction):
-                actions_probs[i] = action_predictions[action.wonder_id + 2 * EntityManager.cards_count()]
+                actions_probs[i] = action_predictions[action.wonder.id + 2 * EntityManager.cards_count()]
             else:
                 raise ValueError
 
@@ -47,18 +47,18 @@ class TorchAgent(Agent):
 
         return actions_probs
 
-    def choose_action(self, state: GameState, possible_actions: Sequence[Action]) -> Action:
-        if state.game_status != GameStatus.NORMAL_TURN:
-            return self.rule_based_agent.choose_action(state, possible_actions)
+    def choose_action(self, game: Game, possible_actions: Sequence[Action]) -> Action:
+        if game.game_status != GameStatus.NORMAL_TURN:
+            return self.rule_based_agent.choose_action(game, possible_actions)
 
-        if abs(state.military_track_state.conflict_pawn) >= 6:
+        if abs(game.military_track.conflict_pawn) >= 6:
             for action in possible_actions:
                 if isinstance(action, BuyCardAction):
                     index = INSTANT_BONUSES.index("shield")
-                    if EntityManager.card(action.card_id).instant_bonuses[index] > 0:
+                    if EntityManager.card(action.card.id).instant_bonuses[index] > 0:
                         return action
 
-        actions_predictions, _ = self.predict(state)
+        actions_predictions, _ = self.predict(game)
         actions_probs = TorchAgent.normalize_actions(actions_predictions, possible_actions)
 
         return possible_actions[actions_probs.argmax()]

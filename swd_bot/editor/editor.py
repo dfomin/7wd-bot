@@ -8,8 +8,8 @@ from swd_bot.editor.game_view import GameWindow
 
 
 def play_against_ai():
-    state = Game.create()
-    state.price_cache = {}
-    GameWindow(state, [MCTSAgent(state), RandomAgent()])
+    game = Game()
+    game.price_cache = {}
+    GameWindow(game, [MCTSAgent(game), RandomAgent()])
     # GameWindow(state, [TorchAgent(), RandomAgent()])
     pyglet.app.run()

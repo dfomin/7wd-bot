@@ -6,16 +6,15 @@ from typing import List, Callable, Optional
 import pandas as pd
 import torch
 from swd.action import BuyCardAction, DiscardCardAction, BuildWonderAction
-from swd.agents import Agent, RecordedAgent, ConsoleAgent, RandomAgent
+from swd.agents import Agent, RecordedAgent
 from swd.game import Game
 from tqdm import tqdm
 
 from swd_bot.agents.mcts_agent import MCTSAgent
 from swd_bot.agents.torch_agent import TorchAgent
 from swd_bot.data_providers.feature_extractor import FlattenEmbeddingsFeatureExtractor
-from swd_bot.game_features import GameFeatures
+# from swd_bot.game_features import GameFeatures
 from swd_bot.model.torch_models import TorchBaseline
-from swd_bot.test.correctness import test_games_correctness
 from swd_bot.thirdparty.sevenee import SeveneeLoader
 
 
@@ -42,7 +41,7 @@ def generate_words():
     df.to_csv("words.csv", index=False)
 
 
-def process_sevenee_games(process_function: Callable[[GameState, List[Agent]], None]):
+def process_sevenee_games(process_function: Callable[[Game, List[Agent]], None]):
     # for file in Path(f"../../7wd/sevenee/").rglob("*.json"):
     #     state, agents = SeveneeLoader.load(file)
     #     if state is None:
@@ -53,24 +52,24 @@ def process_sevenee_games(process_function: Callable[[GameState, List[Agent]], N
     process_function(state, agents)
 
 
-def playout(original_state: GameState) -> float:
+def playout(original_game: Game) -> float:
     wins = 0
     total_games = 1
     for _ in tqdm(range(total_games)):
-        state = original_state.clone()
+        game = original_game.clone()
         agent = TorchAgent()
-        while not Game.is_finished(state):
-            actions = Game.get_available_actions(state)
-            selected_action = agent.choose_action(state, actions)
-            Game.apply_action(state, selected_action)
-            agent.on_action_applied(selected_action, state)
-        wins += state.winner == 0
+        while not game.is_finished:
+            actions = game.get_available_actions()
+            selected_action = agent.choose_action(game, actions)
+            game.apply_action(selected_action)
+            agent.on_action_applied(selected_action, game)
+        wins += game.winner == 0
     return wins / total_games
 
 
-def estimate(state: GameState, agent: Agent) -> float:
-    actions = Game.get_available_actions(state)
-    agent.choose_action(state, actions)
+def estimate(game: Game, agent: Agent) -> float:
+    actions = game.get_available_actions()
+    agent.choose_action(game, actions)
     best_rate = None
     for action, child in agent.mcts.root.children.items():
         if action not in map(str, actions):
@@ -81,7 +80,7 @@ def estimate(state: GameState, agent: Agent) -> float:
             rate = 1 - child.rate()
         if best_rate is None or best_rate < rate:
             best_rate = rate
-    return best_rate if state.current_player_index == 1 else 1 - best_rate
+    return best_rate if game.current_player_index == 1 else 1 - best_rate
 
 
 def collect_states_actions():
@@ -89,15 +88,15 @@ def collect_states_actions():
     saved_actions = [[], [], []]
     saved_win_rates = [[], [], []]
 
-    def save_state(state: GameState, agents: List[Agent]):
+    def save_state(game: Game, agents: List[Agent]):
         mcts_agent = None
-        while not Game.is_finished(state):
-            actions = Game.get_available_actions(state)
-            agent = agents[state.current_player_index]
-            selected_action = agent.choose_action(state, actions)
+        while not game.is_finished:
+            actions = game.get_available_actions()
+            agent = agents[game.current_player_index]
+            selected_action = agent.choose_action(game, actions)
             if isinstance(selected_action, (BuyCardAction, DiscardCardAction, BuildWonderAction)):
                 if mcts_agent is None:
-                    mcts_agent = MCTSAgent(state.clone())
+                    mcts_agent = MCTSAgent(game.clone())
 
                 index = 0
                 if state.meta_info["season"] % 5 == 0:
@@ -194,13 +193,13 @@ def test_model():
     print(correct / all)
 
 
-def extract_state(state: GameState, agents: List[Agent], stop_condition: Callable[[GameState], bool]) -> Optional[GameState]:
-    while not Game.is_finished(state):
-        if stop_condition(state):
-            return state
-        actions = Game.get_available_actions(state)
-        selected_action = agents[state.current_player_index].choose_action(state, actions)
-        Game.apply_action(state, selected_action)
+def extract_state(game: Game, agents: List[Agent], stop_condition: Callable[[Game], bool]) -> Optional[Game]:
+    while not game.is_finished:
+        if stop_condition(game):
+            return game
+        actions = game.get_available_actions()
+        selected_action = agents[game.current_player_index].choose_action(game, actions)
+        game.apply_action(selected_action)
 
 
 def main():
@@ -224,8 +223,8 @@ def main():
     # agent = MCTSAgent(state)
     # estimate(state, agent)
 
-    # from swd_bot.editor.editor import play_against_ai
-    # play_against_ai()
+    from swd_bot.editor.editor import play_against_ai
+    play_against_ai()
 
     # start = time.time()
     # state = Game.create()

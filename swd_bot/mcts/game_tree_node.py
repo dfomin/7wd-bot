@@ -2,12 +2,12 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, List
 
 from swd.action import Action, PickDiscardedCardAction
-from swd.states.game_state import GameState
+from swd.game import Game
 
 
 @dataclass
 class GameTreeNode:
-    game_state: GameState
+    game: Game
     actions: List[Action]
     current_player_index: int
     wins: float = 0

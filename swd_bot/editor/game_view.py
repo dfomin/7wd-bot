@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import List, Optional, Tuple
+from typing import List
 
 import numpy as np
 import pyglet
@@ -7,15 +7,12 @@ from pyglet.sprite import Sprite
 from pyglet.text import Label
 from pyglet.window import Window, key, mouse
 from swd.action import PickWonderAction, BuyCardAction, DiscardCardAction, BuildWonderAction, Action, \
-    PickStartPlayerAction, DestroyCardAction, PickProgressTokenAction
+    PickStartPlayerAction, PickProgressTokenAction
 from swd.agents import Agent
 from swd.bonuses import CARD_COLOR, BONUSES
-from swd.cards_board import NO_CARD, CLOSED_CARD, CLOSED_PURPLE_CARD
 from swd.entity_manager import EntityManager
-from swd.game import Game
+from swd.game import Game, GameStatus
 from swd.player import Player
-from swd.states.game_state import GameState, GameStatus
-from swd.states.player_state import PlayerState
 
 from swd_bot.agents.mcts_agent import MCTSAgent
 from swd_bot.editor.sprite_loader import SpriteLoader
@@ -39,14 +36,14 @@ class Mode(Enum):
 
 
 class GameWindow(Window):
-    def __init__(self, state: GameState, agents: List[Agent]):
+    def __init__(self, game: Game, agents: List[Agent]):
         super(GameWindow, self).__init__(1280, 720)
 
-        self.state = state
-        self.prev_state = None
+        self.game = game
+        self.prev_game = None
         self.last_action = None
         # self.agents = agents
-        self.mcts = MCTSAgent(self.state)
+        self.mcts = MCTSAgent(self.game)
         self.mode = Mode.GAME_BOARD
 
         self.selected_wonder = None
@@ -92,27 +89,24 @@ class GameWindow(Window):
         self.wonder_sprites = []
         self.progress_tokens_sprites = []
 
-        if len(self.state.wonders) > 4:
-            pick_wonders = self.state.wonders[:-4]
+        if len(self.game.wonders) > 4:
+            pick_wonders = self.game.wonders[:-4]
         else:
-            pick_wonders = self.state.wonders
+            pick_wonders = self.game.wonders
 
-        self.player_marker.x = 0 if self.state.current_player_index == 0 else self.width - self.player_marker.width
+        self.player_marker.x = 0 if self.game.current_player_index == 0 else self.width - self.player_marker.width
 
         for row, wonder in enumerate(pick_wonders):
-            sprite = DraftWonderSprite(wonder)
+            sprite = DraftWonderSprite(wonder.id)
             sprite.x = self.width // 2 - sprite.width // 2
             sprite.y = self.height - (row + 1) * sprite.height - row * sprite.height // 10
             self.pick_wonder_sprites.append(sprite)
 
         x_shift = None
         x_space = None
-        for row_index, row in enumerate(self.state.cards_board_state.card_places):
-            for i, card_id in enumerate(row):
-                if card_id == NO_CARD:
-                    continue
-                else:
-                    sprite = CardSprite(card_id, (row_index, i))
+        for row_index, row in enumerate(self.game.cards_board.card_places):
+            for i, board_card in enumerate(row):
+                sprite = CardSprite(board_card.card.id, (row_index, i))
                 if x_shift is None:
                     x_shift = self.width // 2 - sprite.width - sprite.width // 5
                     x_space = sprite.width // 5
@@ -120,35 +114,35 @@ class GameWindow(Window):
                 sprite.y = self.height - sprite.height * (row_index + 1) + sprite.height // 2 * row_index
                 self.card_sprites.append(sprite)
 
-        for i, player_state in enumerate(self.state.players_state):
-            for j, wonder in enumerate(player_state.wonders):
-                sprite = WonderSprite(wonder[0])
+        for i, player in enumerate(self.game.players):
+            for j, wonder in enumerate(player.wonders):
+                sprite = WonderSprite(wonder.id)
                 sprite.x = i * (self.width - sprite.width)
                 sprite.y = self.height - (j + 1) * sprite.height - j * sprite.height // 10
-                if wonder[1] is not None:
+                if wonder.card is not None:
                     sprite.opacity = 32
                 self.wonder_sprites.append(sprite)
 
-        for i, token in enumerate(self.state.progress_tokens):
-            sprite = ProgressTokenSprite(token)
+        for i, token in enumerate(self.game.progress_tokens):
+            sprite = ProgressTokenSprite(token.name)
             sprite.scale = 0.25
             sprite.x = self.width // 2 - sprite.width // 2 + (i - 2) * sprite.width
             sprite.y = PROGRESS_TOKEN_Y
             self.progress_tokens_sprites.append(sprite)
 
-        pawn_shift = self.state.military_track_state.conflict_pawn * PAWN_STEP
+        pawn_shift = self.game.military_track.conflict_pawn * PAWN_STEP
         self.conflict_pawn.x = self.width // 2 - self.conflict_pawn.height // 2 + pawn_shift
 
-        if Game.is_finished(self.state):
-            print(f"Winner: {self.state.winner}")
+        if self.game.is_finished:
+            print(f"Winner: {self.game.winner}")
 
-        for i, player_state in enumerate(self.state.players_state):
-            opponent_state = self.state.players_state[1 - i]
-            self.player_labels[i].text = f"{player_state.coins} {Game.points(self.state, i)[0]} " + \
-                                         f"{player_state.bonuses[0:3]}({player_state.bonuses[5]}) " + \
-                                         f"{player_state.bonuses[3:5]}({player_state.bonuses[6]}) " + \
-                                         f"{Player.assets(player_state, Player.resources(opponent_state), None).resources_cost} " + \
-                                         f"{Player.scientific_symbols(player_state)}"
+        # for i, player in enumerate(self.game.players):
+            # opponent_state = self.state.players_state[1 - i]
+            # self.player_labels[i].text = f"{player_state.coins} {Game.points(self.state, i)[0]} " + \
+            #                              f"{player_state.bonuses[0:3]}({player_state.bonuses[5]}) " + \
+            #                              f"{player_state.bonuses[3:5]}({player_state.bonuses[6]}) " + \
+            #                              f"{Player.assets(player_state, Player.resources(opponent_state), None).resources_cost} " + \
+            #                              f"{Player.scientific_symbols(player_state)}"
 
     def on_draw(self):
         self.clear()
@@ -172,11 +166,10 @@ class GameWindow(Window):
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
                         if button & mouse.LEFT:
                             self.editor_pos = sprite.pos
-                        elif self.state.age == 2:
-                            if self.state.cards_board_state.card_places[sprite.pos] == CLOSED_CARD:
-                                self.state.cards_board_state.card_places[sprite.pos] = CLOSED_PURPLE_CARD
-                            elif self.state.cards_board_state.card_places[sprite.pos] == CLOSED_PURPLE_CARD:
-                                self.state.cards_board_state.card_places[sprite.pos] = CLOSED_CARD
+                        elif self.game.age == 2:
+                            board_card = self.game.cards_board.card_places[sprite.pos[0]][sprite.pos[1]]
+                            if board_card.card is None:
+                                board_card.is_purple_back = not board_card.is_purple_back
                         break
                 for sprite in self.wonder_sprites:
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
@@ -185,12 +178,9 @@ class GameWindow(Window):
             elif self.editor_pos is not None:
                 for sprite in self.card_list_sprites:
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
-                        old_id = self.state.cards_board_state.card_places[self.editor_pos]
+                        old_id = self.game.cards_board.card_places[self.editor_pos[0]][self.editor_pos[1]].card.id
                         if old_id != sprite.card_id:
-                            card_places = self.state.cards_board_state.card_places
-                            card_places[card_places == sprite.card_id] = CLOSED_CARD
-
-                            board_state = self.state.cards_board_state
+                            board_state = self.game.cards_board
 
                             board_state.card_ids = board_state.card_ids[board_state.card_ids != sprite.card_id]
                             board_state.purple_card_ids = board_state.purple_card_ids[board_state.purple_card_ids != sprite.card_id]
@@ -201,12 +191,12 @@ class GameWindow(Window):
                             elif old_id >= 0:
                                 if old_id not in board_state.card_ids:
                                     board_state.card_ids = np.append(board_state.card_ids, old_id)
-                            self.state.cards_board_state.card_places[self.editor_pos] = sprite.card_id
+                            self.game.cards_board.card_places[self.editor_pos[0]][self.editor_pos[1]] = sprite.card_id
                         self.editor_pos = None
             elif self.editor_wonder is not None:
                 for sprite in self.wonder_list_sprites:
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
-                        for player_state in self.state.players_state:
+                        for player_state in self.game.players:
                             for i in range(len(player_state.wonders)):
                                 if player_state.wonders[i][0] == self.editor_wonder:
                                     player_state.wonders[i] = sprite.wonder_id, None
@@ -214,12 +204,12 @@ class GameWindow(Window):
                                     break
                 for sprite in self.progress_tokens_list_sprites:
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
-                        if sprite.progress_token in self.state.progress_tokens:
-                            self.state.progress_tokens.remove(sprite.progress_token)
-                            self.state.rest_progress_tokens.append(sprite.progress_token)
-                        elif sprite.progress_token in self.state.rest_progress_tokens:
-                            self.state.rest_progress_tokens.remove(sprite.progress_token)
-                            self.state.progress_tokens.append(sprite.progress_token)
+                        if sprite.progress_token in self.game.progress_tokens:
+                            self.game.progress_tokens.remove(sprite.progress_token)
+                            self.game.rest_progress_tokens.append(sprite.progress_token)
+                        elif sprite.progress_token in self.game.rest_progress_tokens:
+                            self.game.rest_progress_tokens.remove(sprite.progress_token)
+                            self.game.progress_tokens.append(sprite.progress_token)
 
             self.state_updated()
             return
@@ -227,26 +217,26 @@ class GameWindow(Window):
         if self.last_action is not None:
             return
 
-        available_actions = Game.get_available_actions(self.state)
+        available_actions = self.game.get_available_actions()
 
-        if self.state.game_status == GameStatus.PICK_START_PLAYER:
+        if self.game.game_status == GameStatus.PICK_START_PLAYER:
             action = PickStartPlayerAction(0 if x <= self.width // 2 else 1)
             self.apply_action(action)
             return
-        elif self.state.game_status in [GameStatus.DESTROY_BROWN, GameStatus.DESTROY_GRAY, GameStatus.SELECT_DISCARDED]:
+        elif self.game.game_status in [GameStatus.DESTROY_BROWN, GameStatus.DESTROY_GRAY, GameStatus.SELECT_DISCARDED]:
             for sprite in self.card_list_sprites:
                 if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
                     for action in available_actions:
                         if action.card_id == sprite.card_id:
                             self.apply_action(action)
                             return
-        elif self.state.game_status in [GameStatus.PICK_REST_PROGRESS_TOKEN]:
+        elif self.game.game_status in [GameStatus.PICK_REST_PROGRESS_TOKEN]:
             for sprite in self.progress_tokens_list_sprites:
                 if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
                     action = PickProgressTokenAction(sprite.progress_token)
                     self.apply_action(action)
                     return
-        elif self.state.game_status in [GameStatus.PICK_PROGRESS_TOKEN]:
+        elif self.game.game_status in [GameStatus.PICK_PROGRESS_TOKEN]:
             for sprite in self.progress_tokens_sprites:
                 if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
                     for action in available_actions:
@@ -263,18 +253,27 @@ class GameWindow(Window):
 
         for sprite in self.card_sprites:
             if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
+                action = None
                 if self.selected_wonder is not None:
-                    action = BuildWonderAction(self.selected_wonder.wonder_id, sprite.card_id, sprite.pos)
+                    for action in available_actions:
+                        if isinstance(action, BuildWonderAction) \
+                                and action.wonder.id == self.selected_wonder.wonder_id \
+                                and action.card.id == sprite.card_id:
+                            break
                 elif button & mouse.LEFT:
-                    action = BuyCardAction(sprite.card_id, sprite.pos)
+                    for action in available_actions:
+                        if isinstance(action, BuyCardAction) and action.card.id == sprite.card_id:
+                            break
                 else:
-                    action = DiscardCardAction(sprite.card_id, sprite.pos)
-                if str(action) in map(str, available_actions):
+                    for action in available_actions:
+                        if isinstance(action, DiscardCardAction) and action.card.id == sprite.card_id:
+                            break
+                if action is not None:
                     self.apply_action(action)
                     return
 
-        wonders = self.state.players_state[self.state.current_player_index].wonders
-        unbuilt_wonders = [x[0] for x in wonders if x[1] is None]
+        wonders = self.game.players[self.game.current_player_index].wonders
+        unbuilt_wonders = [x.id for x in wonders if not x.is_built]
         for sprite in self.wonder_sprites:
             if sprite.wonder_id not in unbuilt_wonders:
                 continue
@@ -296,8 +295,11 @@ class GameWindow(Window):
 
     def draw_game_board(self):
         self.best_move_label.draw()
-        if self.state.game_status in [GameStatus.PICK_WONDER, GameStatus.NORMAL_TURN, GameStatus.PICK_PROGRESS_TOKEN,
-                                      GameStatus.PICK_START_PLAYER, GameStatus.FINISHED]:
+        if self.game.game_status in [GameStatus.PICK_WONDER,
+                                     GameStatus.NORMAL_TURN,
+                                     GameStatus.PICK_PROGRESS_TOKEN,
+                                     GameStatus.PICK_START_PLAYER,
+                                     GameStatus.FINISHED]:
             for sprite in self.pick_wonder_sprites:
                 sprite.draw()
 
@@ -316,17 +318,20 @@ class GameWindow(Window):
 
             for label in self.player_labels:
                 label.draw()
-        elif self.state.game_status == GameStatus.PICK_REST_PROGRESS_TOKEN:
+        elif self.game.game_status == GameStatus.PICK_REST_PROGRESS_TOKEN:
             # self.draw_cards_and_tokens([], [x.progress_token for x in Game.get_available_actions(self.state)])
-            self.draw_cards_and_tokens([], self.state.rest_progress_tokens)
-        elif self.state.game_status in [GameStatus.DESTROY_BROWN, GameStatus.DESTROY_GRAY, GameStatus.SELECT_DISCARDED]:
-            self.draw_cards_and_tokens([x.card_id for x in Game.get_available_actions(self.state)], [])
+            self.draw_cards_and_tokens([], [x.name for x in self.game.rest_progress_tokens])
+        elif self.game.game_status in [GameStatus.DESTROY_BROWN, GameStatus.DESTROY_GRAY, GameStatus.SELECT_DISCARDED]:
+            self.draw_cards_and_tokens([x.card_id for x in Game.get_available_actions(self.game)], [])
 
     def draw_editor(self):
         if self.editor_pos is not None:
-            board_cards = list(self.state.cards_board_state.card_places[self.state.cards_board_state.card_places >= 0])
-            card_ids = list(self.state.cards_board_state.card_ids)
-            purple_card_ids = list(self.state.cards_board_state.purple_card_ids)
+            board_cards = [board_card.card.id
+                           for row in self.game.cards_board.card_places
+                           for board_card in row
+                           if not board_card.is_taken]
+            card_ids = [card.id for card in self.game.cards_board.cards]
+            purple_card_ids = [card.id for card in self.game.cards_board.purple_cards]
             self.draw_cards_and_tokens(board_cards + card_ids + purple_card_ids, [])
         elif self.editor_wonder is not None:
             self.draw_wonders()
@@ -338,11 +343,11 @@ class GameWindow(Window):
                 sprite.draw()
 
     def draw_player(self, player_index: int):
-        player_state: PlayerState = self.state.players_state[player_index]
-        self.draw_cards_and_tokens(player_state.cards, player_state.progress_tokens)
+        player: Player = self.game.players[player_index]
+        self.draw_cards_and_tokens([x.id for x in player.cards], [x.name for x in player.progress_tokens])
 
     def draw_discard_pile(self):
-        self.draw_cards_and_tokens(self.state.discard_pile, self.state.rest_progress_tokens)
+        self.draw_cards_and_tokens([x.id for x in self.game.discard_pile], [x.name for x in self.game.rest_progress_tokens])
 
     def draw_wonders(self):
         self.wonder_list_sprites = []
@@ -355,11 +360,12 @@ class GameWindow(Window):
             self.wonder_list_sprites.append(sprite)
             sprite.draw()
 
-        for i, name in enumerate(EntityManager.progress_token_names()):
+        for i in range(EntityManager.progress_tokens_count()):
+            name = EntityManager.progress_token(i).name
             sprite = ProgressTokenSprite(name)
             sprite.x = i * sprite.width
             sprite.y = 0
-            if name in self.state.rest_progress_tokens:
+            if name in [x.name in self.game.rest_progress_tokens]:
                 sprite.opacity = 128
             self.progress_tokens_list_sprites.append(sprite)
             sprite.draw()
@@ -396,8 +402,8 @@ class GameWindow(Window):
         elif symbol == key._4:
             self.mode = Mode.EDITOR
         elif symbol == key._5:
-            self.state = self.prev_state.clone()
-            self.mcts = MCTSAgent(self.state)
+            self.game = self.prev_game.clone()
+            self.mcts = MCTSAgent(self.game)
             self.last_action = None
             self.state_updated()
         elif symbol == key._0:
@@ -409,8 +415,8 @@ class GameWindow(Window):
                 self.move()
 
     def apply_action(self, action: Action):
-        self.prev_state = self.state.clone()
-        Game.apply_action(self.state, action)
+        self.prev_game = self.game.clone()
+        self.game.apply_action(action)
         self.last_action = action
         # for agent in self.agents:
         #     agent.on_action_applied(action, self.state)
@@ -418,14 +424,14 @@ class GameWindow(Window):
         self.state_updated()
 
     def move(self):
-        if Game.is_finished(self.state):
+        if self.game.is_finished:
             return
 
-        self.mcts.on_action_applied(self.last_action, self.state)
+        self.mcts.on_action_applied(self.last_action, self.game)
         self.last_action = None
 
-        actions = Game.get_available_actions(self.state)
-        selected_action = self.mcts.choose_action(self.state, actions)
+        actions = self.game.get_available_actions()
+        selected_action = self.mcts.choose_action(self.game, actions)
         # selected_action = self.agents[self.state.current_player_index].choose_action(self.state, actions)
         self.best_move_label.text = str(selected_action)
         # Game.apply_action(self.state, selected_action)

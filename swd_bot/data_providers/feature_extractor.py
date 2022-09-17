@@ -5,14 +5,14 @@ import numpy as np
 from swd.bonuses import RESOURCES, INSTANT_BONUSES
 from swd.cards import Card
 from swd.entity_manager import EntityManager
-from swd.states.game_state import GameState
+from swd.game import Game
 
 from swd_bot.state_features import StateFeatures
 
 
 class FeatureExtractor(ABC):
     @abstractmethod
-    def features(self, state: GameState) -> Tuple[np.ndarray, np.ndarray]:
+    def features(self, game: Game) -> Tuple[np.ndarray, np.ndarray]:
         raise NotImplemented
 
     @staticmethod
@@ -27,8 +27,8 @@ class FeatureExtractor(ABC):
 
 
 class FlattenFeatureExtractor(FeatureExtractor):
-    def features(self, state: GameState) -> Tuple[np.ndarray, np.ndarray]:
-        x = StateFeatures.extract_state_features_dict(state)
+    def features(self, game: Game) -> Tuple[np.ndarray, np.ndarray]:
+        x = StateFeatures.extract_state_features_dict(game)
         output = [
             x["age"],
             x["current_player"]
@@ -50,8 +50,8 @@ class FlattenFeatureExtractor(FeatureExtractor):
 
 
 class EmbeddingsFeatureExtractor(FeatureExtractor):
-    def features(self, state: GameState) -> Tuple[np.ndarray, np.ndarray]:
-        x = StateFeatures.extract_state_features_dict(state)
+    def features(self, game: Game) -> Tuple[np.ndarray, np.ndarray]:
+        x = StateFeatures.extract_state_features_dict(game)
         output = [
             x["age"],
             x["current_player"]
@@ -80,8 +80,8 @@ class EmbeddingsFeatureExtractor(FeatureExtractor):
 
 
 class FlattenEmbeddingsFeatureExtractor(FeatureExtractor):
-    def features(self, state: GameState) -> Tuple[np.ndarray, np.ndarray]:
-        x = StateFeatures.extract_state_features_dict(state)
+    def features(self, game: Game) -> Tuple[np.ndarray, np.ndarray]:
+        x = StateFeatures.extract_state_features_dict(game)
         output = [
             x["age"],
             x["current_player"]
@@ -110,5 +110,5 @@ class FlattenEmbeddingsFeatureExtractor(FeatureExtractor):
 
 
 class ManualFeatureExtractor(FeatureExtractor):
-    def features(self, state: GameState) -> Tuple[np.ndarray, np.ndarray]:
-        return np.array(StateFeatures.extract_manual_state_features(state)), np.array([])
+    def features(self, game: Game) -> Tuple[np.ndarray, np.ndarray]:
+        return np.array(StateFeatures.extract_manual_state_features(game)), np.array([])

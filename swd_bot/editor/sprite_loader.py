@@ -53,7 +53,7 @@ class SpriteLoader:
 
     @classmethod
     def progress_token(cls, token: str):
-        token_names = EntityManager.progress_token_names()
+        token_names = [EntityManager.progress_token(i).name for i in range(EntityManager.progress_tokens_count())]
         token_id = token_names.index(token)
         index = TOKENS_SPRITE_LIST.index(token_id)
         return cls.progress_tokens()[index]
