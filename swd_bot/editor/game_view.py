@@ -9,7 +9,7 @@ from pyglet.window import Window, key, mouse
 from swd.action import PickWonderAction, BuyCardAction, DiscardCardAction, BuildWonderAction, Action, \
     PickStartPlayerAction, PickProgressTokenAction
 from swd.agents import Agent
-from swd.bonuses import CARD_COLOR, BONUSES, BONUSES_INDEX
+from swd.bonuses import CARD_COLOR, BONUSES_INDEX
 from swd.entity_manager import EntityManager
 from swd.game import Game, GameStatus
 from swd.player import Player
@@ -106,13 +106,19 @@ class GameWindow(Window):
         x_space = None
         for row_index, row in enumerate(self.game.cards_board.card_places):
             for i, board_card in enumerate(row):
-                sprite = CardSprite(board_card.card.id if board_card.card is not None else -1, (row_index, i))
-                if x_shift is None:
-                    x_shift = self.width // 2 - sprite.width - sprite.width // 5
-                    x_space = sprite.width // 5
-                sprite.x = sprite.width * i - ((sprite.width + x_space) // 2) * row_index + x_space * i + x_shift
-                sprite.y = self.height - sprite.height * (row_index + 1) + sprite.height // 2 * row_index
-                self.card_sprites.append(sprite)
+                if not board_card.is_taken:
+                    sprite = CardSprite(board_card.card.id if board_card.card is not None else -1, (row_index, i))
+                    if x_shift is None or x_space is None:
+                        x_space = sprite.width // 5
+                        x_shift = self.width // 2
+                    sprite.x = int(x_shift + (i - len(row) / 2) * (sprite.width + x_space))
+                    if self.game.age == 2 and row_index == 3:
+                        if sprite.x < x_shift:
+                            sprite.x -= (sprite.width + x_space) // 2
+                        else:
+                            sprite.x += (sprite.width + x_space) // 2
+                    sprite.y = int(self.height - sprite.height * (row_index + 1) + row_index * sprite.height / 2)
+                    self.card_sprites.append(sprite)
 
         for i, player in enumerate(self.game.players):
             for j, wonder in enumerate(player.wonders):
@@ -136,13 +142,13 @@ class GameWindow(Window):
         if self.game.is_finished:
             print(f"Winner: {self.game.winner}")
 
-        # for i, player in enumerate(self.game.players):
-            # opponent_state = self.state.players_state[1 - i]
-            # self.player_labels[i].text = f"{player_state.coins} {Game.points(self.state, i)[0]} " + \
-            #                              f"{player_state.bonuses[0:3]}({player_state.bonuses[5]}) " + \
-            #                              f"{player_state.bonuses[3:5]}({player_state.bonuses[6]}) " + \
-            #                              f"{Player.assets(player_state, Player.resources(opponent_state), None).resources_cost} " + \
-            #                              f"{Player.scientific_symbols(player_state)}"
+        for i, player in enumerate(self.game.players):
+            opponent = self.game.players[1 - i]
+            self.player_labels[i].text = f"{player.coins} {self.game.points()[i][0]} " + \
+                                         f"{np.array([player.bonuses.get(x, 0) for x in range(3)])}({player.bonuses[5]}) " + \
+                                         f"{np.array([player.bonuses.get(x, 0) for x in range(3, 5)])}({player.bonuses[6]}) " + \
+                                         f"{player.assets(opponent.bonuses, None).resources_cost} " + \
+                                         f"{np.array(player.scientific_symbols)}"
 
     def on_draw(self):
         self.clear()
@@ -364,7 +370,7 @@ class GameWindow(Window):
             sprite = ProgressTokenSprite(name)
             sprite.x = i * sprite.width
             sprite.y = 0
-            if name in [x.name in self.game.rest_progress_tokens]:
+            if name in [x.name for x in self.game.rest_progress_tokens]:
                 sprite.opacity = 128
             self.progress_tokens_list_sprites.append(sprite)
             sprite.draw()
@@ -374,7 +380,7 @@ class GameWindow(Window):
         self.card_list_sprites = []
         self.progress_tokens_list_sprites = []
         for color in CARD_COLOR:
-            color_index = BONUSES_INDEX(color)
+            color_index = BONUSES_INDEX[color]
             card_ids.extend([card_id
                              for card_id in sorted(cards)
                              if color_index in EntityManager.card(card_id).bonuses])

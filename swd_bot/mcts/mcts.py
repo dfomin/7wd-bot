@@ -44,7 +44,7 @@ class MCTS:
         #     pos_to_replace = (cards_state.card_places == CLOSED_CARD) & (cards_state.preset[2] >= 66)
         #     cards_state.card_places[pos_to_replace] = CLOSED_PURPLE_CARD
         #     cards_state.preset = None
-        self.root = GameTreeNode(game, [str(a) for a in game.get_available_actions()], game.current_player_index)
+        self.root = GameTreeNode(game, game.get_available_actions(), game.current_player_index)
 
     def run(self,
             exploration_coefficient: float = math.sqrt(2),
@@ -63,13 +63,13 @@ class MCTS:
     def select(self, node: GameTreeNode, exploration_coefficient: float):
         unchecked_action = None
         for action in node.actions:
-            if action not in node.children:
+            if str(action) not in node.children:
                 unchecked_action = action
                 break
         if unchecked_action is not None:
             action = unchecked_action
             new_node = self.create_next_node(node.game, action)
-            node.children[action] = new_node
+            node.children[str(action)] = new_node
             new_node.parent = node
             return new_node
         elif len(node.children) > 0:
@@ -86,14 +86,14 @@ class MCTS:
             for index in (-ucb).argsort():
                 action_name = list(node.children.items())[index][0]
                 for action in node.actions:
-                    if action == action_name:
+                    if str(action) == action_name:
                         best_action = action
                         break
                 if best_action is not None:
                     break
             temp_node = self.create_next_node(node.game, best_action)
-            next_node = node.children[best_action]
-            next_node.game_state = temp_node.game
+            next_node = node.children[str(best_action)]
+            next_node.game = temp_node.game
             next_node.actions = temp_node.actions
             return self.select(next_node, exploration_coefficient)
         else:
@@ -131,21 +131,19 @@ class MCTS:
                 node.wins += total_games - wins
             node = node.parent
 
-    def create_next_node(self, game: Game, action: str) -> GameTreeNode:
+    def create_next_node(self, game: Game, action: Action) -> GameTreeNode:
         game = game.clone()
-        action = [a for a in game.get_available_actions() if str(a) == action][0]
         game.apply_action(action)
-        actions = game.get_available_actions()
-        return GameTreeNode(game, [str(a) for a in actions], game.current_player_index)
+        return GameTreeNode(game, game.get_available_actions(), game.current_player_index)
 
-    def shrink_tree(self, made_action: str, new_game: Game):
-        if made_action in self.root.children:
-            new_root = self.root.children[made_action]
+    def shrink_tree(self, made_action: Action, new_game: Game):
+        if str(made_action) in self.root.children:
+            new_root = self.root.children[str(made_action)]
             new_root.game = new_game
-            available_actions = Game.get_available_actions(new_root.game)
-            new_root.actions = [str(a) for a in available_actions]
+            available_actions = new_game.get_available_actions()
+            new_root.actions = available_actions
             new_root.parent = None
-            actions_to_delete = [x for x in new_root.children.keys() if x not in available_actions]
+            actions_to_delete = [x for x in new_root.children.keys() if x not in map(str, available_actions)]
             for action in actions_to_delete:
                 new_root.children[action].parent = None
                 del new_root.children[action]

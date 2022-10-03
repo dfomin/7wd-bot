@@ -8,7 +8,7 @@ from swd.game import Game
 @dataclass
 class GameTreeNode:
     game: Game
-    actions: List[str]
+    actions: List[Action]
     current_player_index: int
     wins: float = 0
     total_games: int = 0
@@ -19,7 +19,7 @@ class GameTreeNode:
         rate = self.wins / self.total_games
 
         for action in self.actions:
-            if str(action) in self.children:
+            if isinstance(action, PickDiscardedCardAction) and str(action) in self.children:
                 child = self.children[str(action)]
                 if self.game.current_player_index == child.game.current_player_index:
                     child_rate = child.rate()

@@ -15,6 +15,7 @@ from swd_bot.agents.torch_agent import TorchAgent
 from swd_bot.data_providers.feature_extractor import FlattenEmbeddingsFeatureExtractor
 # from swd_bot.game_features import GameFeatures
 from swd_bot.model.torch_models import TorchBaseline
+from swd_bot.test.correctness import test_games_correctness
 from swd_bot.thirdparty.sevenee import SeveneeLoader
 
 
@@ -237,7 +238,6 @@ def main():
     # print(state.winner, time.time() - start)
 
     # test_games_correctness("../../7wd/sevenee/", SeveneeLoader)
-    pass
 
 
 if __name__ == "__main__":
