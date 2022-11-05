@@ -1,4 +1,4 @@
-epochs: 30
+epochs: 100
 device: cpu
 output_path: ../../models
 model_prefix: model_manual_v3

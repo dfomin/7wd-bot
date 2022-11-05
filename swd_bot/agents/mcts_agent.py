@@ -3,7 +3,7 @@ from typing import Sequence
 
 import numpy as np
 from swd.action import Action
-from swd.agents import Agent
+from swd.agents import Agent, RandomAgent
 from swd.game import Game
 from swd.states.game_state import GameState, GameStatus
 
@@ -26,21 +26,22 @@ class MCTSAgent(Agent):
             winners_predictions /= winners_predictions.sum()
             return winners_predictions[s.current_player_index]
 
-        self.mcts = MCTS(state, self.torch_agent, self.torch_agent, evaluation_function)
+        self.mcts = MCTS(state, RandomAgent(), self.torch_agent, evaluation_function)
 
     def choose_action(self, state: GameState, possible_actions: Sequence[Action]) -> Action:
         if state.game_status == GameStatus.PICK_WONDER:
             return self.torch_agent.choose_action(state, possible_actions)
 
-        self.mcts.run(max_time=5, playout_limit=100, simulations=10000, playouts=100)
+        self.mcts.run(max_time=10, playout_limit=100, simulations=10_000, playouts=1)
         self.mcts.print_optimal_path(1)
 
-        actions_predictions, _ = self.torch_agent.predict(state)
-        if state.game_status == GameStatus.NORMAL_TURN:
-            actions_probs = TorchAgent.normalize_actions(actions_predictions, possible_actions)
-            actions_probs /= 10
-        else:
-            actions_probs = np.zeros(len(possible_actions))
+        # actions_predictions, _ = self.torch_agent.predict(state)
+        # if state.game_status == GameStatus.NORMAL_TURN:
+        #     actions_probs = TorchAgent.normalize_actions(actions_predictions, possible_actions)
+        #     actions_probs /= 10
+        # else:
+        #     actions_probs = np.zeros(len(possible_actions))
+        actions_probs = np.zeros(len(possible_actions))
 
         for i, action in enumerate(possible_actions):
             if str(action) in self.mcts.root.children:

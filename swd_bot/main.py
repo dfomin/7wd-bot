@@ -44,14 +44,14 @@ def generate_words():
 
 
 def process_sevenee_games(process_function: Callable[[GameState, List[Agent]], None]):
-    # for file in Path(f"../../7wd/sevenee/").rglob("*.json"):
-    #     state, agents = SeveneeLoader.load(file)
-    #     if state is None:
-    #         continue
-    #     print(file)
-    #     process_function(state, agents)
-    state, agents = SeveneeLoader.load(Path(f"../../7wd/sevenee/48/0/0/FBtsCb8PDryQFrvaH.json"))
-    process_function(state, agents)
+    for file in Path(f"../../7wd/sevenee/").rglob("*.json"):
+        state, agents = SeveneeLoader.load(file)
+        if state is None:
+            continue
+        print(file)
+        process_function(state, agents)
+    # state, agents = SeveneeLoader.load(Path(f"../../7wd/sevenee/48/0/0/FBtsCb8PDryQFrvaH.json"))
+    # process_function(state, agents)
 
 
 def playout(original_state: GameState) -> float:
@@ -69,7 +69,7 @@ def playout(original_state: GameState) -> float:
     return wins / total_games
 
 
-def estimate(state: GameState, agent: Agent) -> float:
+def estimate(state: GameState, agent: MCTSAgent) -> float:
     actions = Game.get_available_actions(state)
     agent.choose_action(state, actions)
     best_rate = None
@@ -91,15 +91,11 @@ def collect_states_actions():
     saved_win_rates = [[], [], []]
 
     def save_state(state: GameState, agents: List[Agent]):
-        mcts_agent = None
         while not Game.is_finished(state):
             actions = Game.get_available_actions(state)
             agent = agents[state.current_player_index]
             selected_action = agent.choose_action(state, actions)
             if isinstance(selected_action, (BuyCardAction, DiscardCardAction, BuildWonderAction)):
-                if mcts_agent is None:
-                    mcts_agent = MCTSAgent(state.clone())
-
                 index = 0
                 if state.meta_info["season"] % 5 == 0:
                     index = 2
@@ -108,12 +104,7 @@ def collect_states_actions():
                 saved_states[index].append(state.clone())
                 saved_actions[index].append(selected_action)
 
-                win_rate = estimate(state, mcts_agent)
-                saved_win_rates[index].append(win_rate)
-
             Game.apply_action(state, selected_action)
-            if mcts_agent is not None:
-                mcts_agent.on_action_applied(selected_action, state.clone())
 
     process_sevenee_games(save_state)
 
@@ -122,14 +113,11 @@ def collect_states_actions():
 
     suffixes = ["_train", "_valid", "_test"]
     for i in range(3):
-        with open(f"../datasets/buy_discard_build/win_rates{suffixes[i]}.pkl", "wb") as f:
-            pickle.dump(saved_win_rates[i], f)
-    # for i in range(3):
-    #     with open(f"../datasets/buy_discard_build/states{suffixes[i]}.pkl", "wb") as f:
-    #         pickle.dump(saved_states[i], f)
-    #
-    #     with open(f"../datasets/buy_discard_build/actions{suffixes[i]}.pkl", "wb") as f:
-    #         pickle.dump(saved_actions[i], f)
+        with open(f"../datasets/buy_discard_build/states{suffixes[i]}.pkl", "wb") as f:
+            pickle.dump(saved_states[i], f)
+
+        with open(f"../datasets/buy_discard_build/actions{suffixes[i]}.pkl", "wb") as f:
+            pickle.dump(saved_actions[i], f)
 
 
 def collect_games_features():
@@ -225,8 +213,8 @@ def main():
     # agent = MCTSAgent(state)
     # estimate(state, agent)
 
-    # from swd_bot.editor.editor import play_against_ai
-    # play_against_ai()
+    from swd_bot.editor.editor import play_against_ai
+    play_against_ai()
 
     # start = time.time()
     # state = Game.create()
@@ -238,7 +226,7 @@ def main():
     #     agent.on_action_applied(selected_action, state)
     # print(state.winner, time.time() - start)
 
-    test_games_correctness("../../7wd/sevenee/", SeveneeLoader)
+    # test_games_correctness("../../7wd/sevenee/", SeveneeLoader)
 
 
 if __name__ == "__main__":

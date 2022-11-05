@@ -15,8 +15,8 @@ from swd_bot.model.torch_models import TorchBaseline
 
 class TorchAgent(Agent):
     def __init__(self):
-        self.model = TorchBaseline(122, 0, [50])
-        self.model.load_state_dict(torch.load("../models/model_manual_v4_acc52.25.pth"))
+        self.model = TorchBaseline(122, 0, [300])
+        self.model.load_state_dict(torch.load("../models/model_manual_v4_acc54.51.pth"))
         self.model.eval()
 
         self.feature_extractor = ManualFeatureExtractor()

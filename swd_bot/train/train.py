@@ -3,7 +3,6 @@ import torch
 from omegaconf import DictConfig
 from torch import nn, optim
 
-from swd_bot.data_providers.feature_extractor import FeatureExtractor
 from swd_bot.data_providers.torch_data_provider import TorchDataProvider
 
 

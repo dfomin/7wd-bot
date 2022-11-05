@@ -95,6 +95,8 @@ class MCTS:
             next_node = node.children[str(best_action)]
             next_node.game_state = temp_node.game_state
             next_node.actions = temp_node.actions
+            if next_node.game_state.age != node.game_state.age:
+                return next_node
             return self.select(next_node, exploration_coefficient)
         else:
             return node
@@ -102,8 +104,8 @@ class MCTS:
     def expand_and_play(self, node: GameTreeNode, playouts: int = 1, playout_limit: int = 1_000) -> Tuple[float, int]:
         wins = 0
         agent = self.simulation_agent
-        state = node.game_state.clone()
         for _ in range(playouts):
+            state = node.game_state.clone()
             moves_count = 0
             while not Game.is_finished(state) and moves_count < playout_limit:
                 actions = Game.get_available_actions(state)
@@ -170,7 +172,7 @@ class MCTS:
                     best_action = action
                     max_score = rate
             for action, rate, child in sorted(children, key=lambda x: -x[1]):
-                print(action, rate, child.wins, child.total_games)
+                print(f"{action} {round(rate, 2)}, {child.total_games - int(child.wins)}/{child.total_games}")
             if best_action == "":
                 print(f"Winner: {node.game_state.winner}")
                 print(f"{Game.points(node.game_state, 0), node.game_state.players_state[0].coins} "
