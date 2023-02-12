@@ -57,7 +57,7 @@ class RuleBasedAgent(Agent):
             "urbanism": 3.5,
         }
 
-        max_scientific_symbols = max(map(lambda x: sum(Player.scientific_symbols(x) > 0), state.players_state))
+        max_scientific_symbols = max(map(lambda x: sum(x > 0 for x in Player.scientific_symbols(x)), state.players_state))
         if board and max_scientific_symbols >= 3:
             weights["law"] = 100
 

@@ -30,7 +30,7 @@ class SeveneeLoader(GameLogLoader):
         rest_tokens = []
         wonders = []
         sevenee_cards_preset = []
-        cards_preset = np.zeros((3, AGES[0].shape[0], AGES[0].shape[1]), dtype=int) + NO_CARD
+        cards_preset = [[[NO_CARD for _ in range(len(AGES[0][0]))] for _ in range(len(AGES[0]))] for _ in range(3)]
 
         actions: List[List[Action]] = [[], []]
         for i, action_item in enumerate(game_log["actionItems"]):
@@ -50,7 +50,12 @@ class SeveneeLoader(GameLogLoader):
                             age_cards.append(card)
                 sevenee_cards_preset.append(age_cards)
                 for age in range(len(sevenee_cards_preset)):
-                    cards_preset[age][AGES[age] > 0] = sevenee_cards_preset[age]
+                    counter = 0
+                    for y in range(len(AGES[age])):
+                        for x in range(len(AGES[age][0])):
+                            if AGES[age][y][x] > 0:
+                                cards_preset[age][y][x] = sevenee_cards_preset[age][counter]
+                                counter += 1
             if agent != "p":
                 continue
             player_index = action["playerIndex"]
@@ -97,7 +102,7 @@ class SeveneeLoader(GameLogLoader):
                                MilitaryTrackState(),
                                GameStatus.PICK_WONDER,
                                None,
-                               CardsBoardState(0, np.array([]), np.array([]), np.array([]), cards_preset),
+                               CardsBoardState(0, [], [], [], cards_preset),
                                game_log["data"])
         game_state.meta_info["player_names"] = player_names
         game_state.meta_info["division"] = int(str(path).split("/")[-3])
@@ -106,6 +111,9 @@ class SeveneeLoader(GameLogLoader):
         return game_state, agents
 
     @staticmethod
-    def card_pos(card_id: int, cards_preset: np.ndarray) -> Tuple[int, int]:
-        index = np.transpose(np.where(cards_preset == card_id))[0]
-        return tuple(index[1:])
+    def card_pos(card_id: int, cards_preset: List[List[List[int]]]) -> Tuple[int, int]:
+        for age in range(3):
+            for i in range(len(AGES[0])):
+                for j in range(len(AGES[0][0])):
+                    if cards_preset[age][i][j] == card_id:
+                        return i, j

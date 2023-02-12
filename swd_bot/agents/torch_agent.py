@@ -1,3 +1,4 @@
+import random
 from typing import Sequence, Tuple
 
 import numpy as np
@@ -15,8 +16,8 @@ from swd_bot.model.torch_models import TorchBaseline
 
 class TorchAgent(Agent):
     def __init__(self):
-        self.model = TorchBaseline(122, 0, [300])
-        self.model.load_state_dict(torch.load("../models/model_manual_v4_acc54.51.pth"))
+        self.model = TorchBaseline(125, 0, [300])
+        self.model.load_state_dict(torch.load("../models/model_manual_v4_acc54.73.pth"))
         self.model.eval()
 
         self.feature_extractor = ManualFeatureExtractor()
@@ -63,6 +64,4 @@ class TorchAgent(Agent):
 
         # action_probs = np.power(action_probs, 2)
         # action_probs /= action_probs.sum()
-        # for prob, action in zip(action_probs, possible_actions):
-        #     print(f"{action}: {round(prob, 2)}")
         # return random.choices(possible_actions, weights=actions_probs)[0]

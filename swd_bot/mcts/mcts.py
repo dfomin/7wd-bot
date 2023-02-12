@@ -172,7 +172,7 @@ class MCTS:
                     best_action = action
                     max_score = rate
             for action, rate, child in sorted(children, key=lambda x: -x[1]):
-                print(f"{action} {round(rate, 2)}, {child.total_games - int(child.wins)}/{child.total_games}")
+                print(f"{action} {round(rate, 2)}, {child.total_games}")
             if best_action == "":
                 print(f"Winner: {node.game_state.winner}")
                 print(f"{Game.points(node.game_state, 0), node.game_state.players_state[0].coins} "

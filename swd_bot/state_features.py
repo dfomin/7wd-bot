@@ -70,7 +70,7 @@ class StateFeatures:
 
     @staticmethod
     def extract_manual_state_features(state: GameState) -> List[int]:
-        features = []
+        features: List[int] = [i == state.age for i in range(3)]
 
         features.extend([int(x in state.progress_tokens) for x in EntityManager.progress_token_names()])
 

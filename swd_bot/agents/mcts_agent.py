@@ -26,13 +26,13 @@ class MCTSAgent(Agent):
             winners_predictions /= winners_predictions.sum()
             return winners_predictions[s.current_player_index]
 
-        self.mcts = MCTS(state, RandomAgent(), self.torch_agent, evaluation_function)
+        self.mcts = MCTS(state, self.torch_agent, self.torch_agent, evaluation_function)
 
     def choose_action(self, state: GameState, possible_actions: Sequence[Action]) -> Action:
         if state.game_status == GameStatus.PICK_WONDER:
             return self.torch_agent.choose_action(state, possible_actions)
 
-        self.mcts.run(max_time=10, playout_limit=100, simulations=10_000, playouts=1)
+        self.mcts.run(max_time=1, playout_limit=100, simulations=10_000, playouts=1)
         self.mcts.print_optimal_path(1)
 
         # actions_predictions, _ = self.torch_agent.predict(state)

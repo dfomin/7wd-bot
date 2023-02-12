@@ -371,7 +371,7 @@ class GameWindow(Window):
         for color in CARD_COLOR:
             color_index = BONUSES.index(color)
             card_ids.extend(
-                [card_id for card_id in sorted(cards) if EntityManager.card(card_id).bonuses[color_index] > 0])
+                [card_id for card_id in sorted(cards) if EntityManager.card(card_id).bonuses.get(color_index, 0) > 0])
         for i, card_id in enumerate(card_ids):
             sprite = CardSprite(card_id)
             sprite.x = (i % 15) * sprite.width

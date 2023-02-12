@@ -213,8 +213,8 @@ def main():
     # agent = MCTSAgent(state)
     # estimate(state, agent)
 
-    from swd_bot.editor.editor import play_against_ai
-    play_against_ai()
+    # from swd_bot.editor.editor import play_against_ai
+    # play_against_ai()
 
     # start = time.time()
     # state = Game.create()
@@ -226,7 +226,7 @@ def main():
     #     agent.on_action_applied(selected_action, state)
     # print(state.winner, time.time() - start)
 
-    # test_games_correctness("../../7wd/sevenee/", SeveneeLoader)
+    test_games_correctness("../../7wd/sevenee/", SeveneeLoader)
 
 
 if __name__ == "__main__":

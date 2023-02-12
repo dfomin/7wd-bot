@@ -42,8 +42,9 @@ def train(config: DictConfig):
 
             pred_actions, pred_winners = model(features.to(device), cards.to(device))
             action_loss = action_criterion(pred_actions, true_actions.to(device))
-            winner_loss = winner_criterion(pred_winners, true_winners.to(device))
-            loss = action_loss + winner_loss
+            # winner_loss = winner_criterion(pred_winners, true_winners.to(device))
+            # loss = action_loss + winner_loss
+            loss = action_loss
             loss.backward()
             optimizer.step()
 
