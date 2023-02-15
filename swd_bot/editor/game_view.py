@@ -1,13 +1,12 @@
 from enum import Enum, auto
-from typing import List, Optional, Tuple
+from typing import List
 
-import numpy as np
 import pyglet
 from pyglet.sprite import Sprite
 from pyglet.text import Label
 from pyglet.window import Window, key, mouse
 from swd.action import PickWonderAction, BuyCardAction, DiscardCardAction, BuildWonderAction, Action, \
-    PickStartPlayerAction, DestroyCardAction, PickProgressTokenAction
+    PickStartPlayerAction, PickProgressTokenAction
 from swd.agents import Agent
 from swd.bonuses import CARD_COLOR, BONUSES
 from swd.cards_board import NO_CARD, CLOSED_CARD, CLOSED_PURPLE_CARD
@@ -173,10 +172,11 @@ class GameWindow(Window):
                         if button & mouse.LEFT:
                             self.editor_pos = sprite.pos
                         elif self.state.age == 2:
-                            if self.state.cards_board_state.card_places[sprite.pos] == CLOSED_CARD:
-                                self.state.cards_board_state.card_places[sprite.pos] = CLOSED_PURPLE_CARD
-                            elif self.state.cards_board_state.card_places[sprite.pos] == CLOSED_PURPLE_CARD:
-                                self.state.cards_board_state.card_places[sprite.pos] = CLOSED_CARD
+                            card_places = self.state.cards_board_state.card_places
+                            if card_places[sprite.pos[0]][sprite.pos[1]] == CLOSED_CARD:
+                                card_places[sprite.pos[0]][sprite.pos[1]] = CLOSED_PURPLE_CARD
+                            elif card_places[sprite.pos[0]][sprite.pos[1]] == CLOSED_PURPLE_CARD:
+                                card_places[sprite.pos[0]][sprite.pos[1]] = CLOSED_CARD
                         break
                 for sprite in self.wonder_sprites:
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
@@ -185,23 +185,33 @@ class GameWindow(Window):
             elif self.editor_pos is not None:
                 for sprite in self.card_list_sprites:
                     if sprite.x <= x <= sprite.x + sprite.width and sprite.y <= y <= sprite.y + sprite.height:
-                        old_id = self.state.cards_board_state.card_places[self.editor_pos]
+                        old_id = self.state.cards_board_state.card_places[self.editor_pos[0]][self.editor_pos[1]]
                         if old_id != sprite.card_id:
                             card_places = self.state.cards_board_state.card_places
-                            card_places[card_places == sprite.card_id] = CLOSED_CARD
+                            for y, row in enumerate(card_places):
+                                for x, card_id in enumerate(row):
+                                    if card_id == sprite.card_id:
+                                        card_places[y][x] = CLOSED_CARD
 
                             board_state = self.state.cards_board_state
 
-                            board_state.card_ids = board_state.card_ids[board_state.card_ids != sprite.card_id]
-                            board_state.purple_card_ids = board_state.purple_card_ids[board_state.purple_card_ids != sprite.card_id]
+                            try:
+                                board_state.card_ids.remove(sprite.card_id)
+                            except ValueError:
+                                pass
+                            try:
+                                board_state.purple_card_ids.remove(sprite.card_id)
+                            except ValueError:
+                                pass
 
                             if old_id >= 66:
                                 if old_id not in board_state.purple_card_ids:
-                                    board_state.purple_card_ids = np.append(board_state.purple_card_ids, old_id)
+                                    board_state.purple_card_ids.append(old_id)
                             elif old_id >= 0:
                                 if old_id not in board_state.card_ids:
-                                    board_state.card_ids = np.append(board_state.card_ids, old_id)
-                            self.state.cards_board_state.card_places[self.editor_pos] = sprite.card_id
+                                    board_state.card_ids.append(old_id)
+                            self.state.cards_board_state.card_places[self.editor_pos[0]][self.editor_pos[1]] = sprite.card_id
+                            self.state.cards_board_state.available_cards = None
                         self.editor_pos = None
             elif self.editor_wonder is not None:
                 for sprite in self.wonder_list_sprites:
@@ -324,9 +334,9 @@ class GameWindow(Window):
 
     def draw_editor(self):
         if self.editor_pos is not None:
-            board_cards = list(self.state.cards_board_state.card_places[self.state.cards_board_state.card_places >= 0])
-            card_ids = list(self.state.cards_board_state.card_ids)
-            purple_card_ids = list(self.state.cards_board_state.purple_card_ids)
+            board_cards = [card for row in self.state.cards_board_state.card_places for card in row if card >= 0]
+            card_ids = self.state.cards_board_state.card_ids
+            purple_card_ids = self.state.cards_board_state.purple_card_ids
             self.draw_cards_and_tokens(board_cards + card_ids + purple_card_ids, [])
         elif self.editor_wonder is not None:
             self.draw_wonders()
