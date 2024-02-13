@@ -1,0 +1,23 @@
+[2024-02-13 22:41:37,152.152] INFO [8098634816] - Will watch for changes in these directories: ['/Users/dfomin/projects/7wd-bot/swd_bot']
+[2024-02-13 22:41:37,152.152] INFO [8098634816] - Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[2024-02-13 22:41:37,158.158] INFO [8098634816] - Started reloader process [12969] using watchgod
+[2024-02-13 22:41:40,758.758] INFO [8098634816] - Stopping reloader process [12969]
+[2024-02-13 22:42:49,566.566] INFO [8098634816] - Will watch for changes in these directories: ['/Users/dfomin/projects/7wd-bot/swd_bot']
+[2024-02-13 22:42:49,566.566] INFO [8098634816] - Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[2024-02-13 22:42:49,570.570] INFO [8098634816] - Started reloader process [13032] using watchgod
+[2024-02-13 22:42:51,678.678] INFO [8098634816] - Stopping reloader process [13032]
+[2024-02-13 22:43:10,263.263] INFO [8098634816] - Will watch for changes in these directories: ['/Users/dfomin/projects/7wd-bot/swd_bot']
+[2024-02-13 22:43:10,263.263] INFO [8098634816] - Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[2024-02-13 22:43:10,267.267] INFO [8098634816] - Started reloader process [13109] using watchgod
+[2024-02-13 22:43:22,069.069] INFO [8098634816] - Stopping reloader process [13109]
+[2024-02-13 22:43:37,506.506] INFO [8098634816] - Will watch for changes in these directories: ['/Users/dfomin/projects/7wd-bot/swd_bot']
+[2024-02-13 22:43:37,507.507] INFO [8098634816] - Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[2024-02-13 22:43:37,511.511] INFO [8098634816] - Started reloader process [13173] using watchgod
+[2024-02-13 22:43:40,548.548] INFO [8098634816] - Started server process [13175]
+[2024-02-13 22:43:40,548.548] INFO [8098634816] - Waiting for application startup.
+[2024-02-13 22:43:40,549.549] INFO [8098634816] - Application startup complete.
+[2024-02-13 22:44:09,839.839] INFO [8098634816] - Shutting down
+[2024-02-13 22:44:09,942.942] INFO [8098634816] - Waiting for application shutdown.
+[2024-02-13 22:44:09,943.943] INFO [8098634816] - Application shutdown complete.
+[2024-02-13 22:44:09,944.944] INFO [8098634816] - Finished server process [13175]
+[2024-02-13 22:44:10,091.091] INFO [8098634816] - Stopping reloader process [13173]

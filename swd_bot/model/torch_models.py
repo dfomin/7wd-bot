@@ -53,3 +53,31 @@ class TorchBaselineEmbeddings(nn.Module):
         policy = self.linear3(x)
         value = self.linear4(x)
         return policy, value
+
+
+class TorchAllLayers(nn.Module):
+    def __init__(self,
+                 game_features_count: int,
+                 cards_features_count: int,
+                 hidden_features_count: List[int]):
+        super().__init__()
+
+        prev_features = game_features_count
+        layers = []
+        for features_count in hidden_features_count:
+            layers.append(nn.Linear(prev_features, features_count))
+            layers.append(nn.LeakyReLU())
+            layers.append(nn.BatchNorm1d(features_count))
+            layers.append(nn.Dropout())
+            prev_features = features_count
+
+        self.backbone = nn.Sequential(*layers)
+        self.head_policy = nn.Linear(prev_features, EntityManager.cards_count() * 2 + EntityManager.wonders_count())
+        self.head_value = nn.Linear(prev_features, 2)
+
+    def forward(self, features, cards):
+        x = features
+        x = self.backbone(x)
+        policy = self.head_policy(x)
+        value = self.head_value(x)
+        return policy, value

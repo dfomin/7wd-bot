@@ -1,8 +1,8 @@
 epochs: 100
 device: cpu
 output_path: ../../models
-model_prefix: model_manual_v5
+model_prefix: model_manual_full_v1
 defaults:
-  - model: flat_v5
+  - model: full_v1
   - data_provider: torch
   - override data_provider/feature_extractor: manual

@@ -1,8 +1,8 @@
-epochs: 30
+epochs: 50
 device: cpu
 output_path: ../../models
-model_prefix: model_flat
+model_prefix: model_flat_v1
 defaults:
-  - model: flat
+  - model: flat_v1
   - data_provider: torch
   - override data_provider/feature_extractor: flat

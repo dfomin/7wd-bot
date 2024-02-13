@@ -1,4 +1,4 @@
-epochs: 30
+epochs: 50
 device: cpu
 output_path: ../../models
 model_prefix: model_flat_v2

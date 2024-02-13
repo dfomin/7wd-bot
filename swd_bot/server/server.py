@@ -18,7 +18,7 @@ def process_game_state(state_description: Dict[str, Any]):
     state = SwdioLoader.parse_state(state_description)
 
     if not Game.is_finished(state):
-        agent = MCTSAgent(state)
+        agent = TorchAgent()
         actions = Game.get_available_actions(state)
         selected_action = agent.choose_action(state, actions)
         logging.info(selected_action)
