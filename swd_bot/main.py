@@ -16,9 +16,9 @@ from swd_bot.agents.torch_agent import TorchAgent
 from swd_bot.data_providers.feature_extractor import FlattenEmbeddingsFeatureExtractor
 from swd_bot.game_features import GameFeatures
 from swd_bot.model.torch_models import TorchBaseline
-from swd_bot.test.correctness import test_games_correctness
+from swd_bot.test.correctness import test_games_correctness, test_game_correctness
 from swd_bot.thirdparty.sevenee import SeveneeLoader
-
+from swd_bot.thirdparty.swdio import SwdioLoader
 
 torch_agent = TorchAgent()
 
@@ -201,8 +201,8 @@ def main():
     # collect_states_actions()
     # collect_games_features()
     # test_model()
-    # state, agents = SwdioLoader.load(Path("../../7wd/7wdio/log.json"))
-    # test_game(state, agents, False)
+    state, agents = SwdioLoader.load(Path("../../7wd/7wdio/44.json"))
+    test_game_correctness(state, agents, True)
 
     # state, agents = SeveneeLoader.load(Path(f"../../7wd/sevenee/48/1/1/MG4pdRWGH5aECmPKs.json"))
     # print(state.meta_info["player_names"])
@@ -213,8 +213,8 @@ def main():
     # agent = MCTSAgent(state)
     # estimate(state, agent)
 
-    from swd_bot.editor.editor import play_against_ai
-    play_against_ai()
+    # from swd_bot.editor.editor import play_against_ai
+    # play_against_ai()
 
     # start = time.time()
     # state = Game.create()

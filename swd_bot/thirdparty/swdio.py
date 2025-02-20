@@ -140,12 +140,12 @@ class SwdioLoader(GameLogLoader):
         rest_tokens = [EntityManager.progress_token_names()[x] for x in range(10) if x not in tokens]
         wonders = [x - 1 for x in game_log[0]["move"]["wonders"]]
 
-        cards_preset = np.zeros((3, AGES[0].shape[0], AGES[0].shape[1]), dtype=int) + NO_CARD
+        cards_preset = np.zeros((3, np.array(AGES)[0].shape[0], np.array(AGES)[0].shape[1]), dtype=int) + NO_CARD
         for age in range(3):
             epoch_cards = list(map(lambda x: CARDS_MAP[x], game_log[0]["move"]["cards"].get(f"{age + 1}")))
             if epoch_cards is None:
                 break
-            cards_preset[age][AGES[age] > 0] = epoch_cards
+            cards_preset[age][np.array(AGES)[age] > 0] = epoch_cards
 
         actions: List[List[Action]] = [[], []]
         for _, action_item in enumerate(game_log):
@@ -276,7 +276,7 @@ class SwdioLoader(GameLogLoader):
                 winner = None
 
         if "layout" in state["state"]["cardItems"] and state["state"]["cardItems"]["layout"] is not None:
-            mask = AGES[age]
+            mask = np.array(AGES)[age]
             card_places = mask + NO_CARD
             card_places[mask > 0] = list(map(lambda x: CARDS_MAP[x], state["state"]["cardItems"]["layout"]))
             age_cards = []
