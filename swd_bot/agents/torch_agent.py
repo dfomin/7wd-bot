@@ -60,8 +60,8 @@ class TorchAgent(Agent):
         actions_predictions, _ = self.predict(state)
         actions_probs = TorchAgent.normalize_actions(actions_predictions, possible_actions)
 
-        return possible_actions[actions_probs.argmax()]
+        # return possible_actions[actions_probs.argmax()]
 
-        # action_probs = np.power(action_probs, 2)
-        # actions_probs /= actions_probs.sum()
-        # return random.choices(possible_actions, weights=actions_probs)[0]
+        actions_probs = np.power(actions_probs, 2)
+        actions_probs /= actions_probs.sum()
+        return random.choices(possible_actions, weights=actions_probs)[0]
